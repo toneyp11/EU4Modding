@@ -3,29 +3,32 @@
   "tasks": [
     {
       "label": "EU4: Validate mod (check-mod)",
-      "type": "shell",
-      "command": "bash ../scripts/check-mod.sh",
+      "type": "process",
+      "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+      "args": ["../scripts/check-mod.sh"],
       "problemMatcher": [],
       "group": { "kind": "build", "isDefault": true },
       "presentation": { "reveal": "always", "panel": "shared", "clear": true }
     },
     {
       "label": "EU4: Read logs (after a test run)",
-      "type": "shell",
-      "command": "bash ../scripts/read-logs.sh",
+      "type": "process",
+      "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+      "args": ["../scripts/read-logs.sh"],
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared", "clear": true }
     },
     {
       "label": "EU4: GUI diff (our injections)",
-      "type": "shell",
-      "command": "bash ../scripts/gui-diff.sh",
+      "type": "process",
+      "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+      "args": ["../scripts/gui-diff.sh"],
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared", "clear": true }
     },
     {
       "label": "EU4: Launch game (Steam)",
-      "type": "shell",
+      "type": "process",
       "command": "cmd",
       "args": ["/c", "start", "", "steam://run/236850"],
       "problemMatcher": [],
