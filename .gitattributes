@@ -1,0 +1,9 @@
+# Keep Paradox script/data files and shell scripts as LF; never let autocrlf
+# rewrite them (protects the required UTF-8 BOM on localisation .yml and keeps
+# diffs stable). They stay text (diffable), just normalized to LF.
+*.gui  text eol=lf
+*.gfx  text eol=lf
+*.txt  text eol=lf
+*.yml  text eol=lf
+*.mod  text eol=lf
+*.sh   text eol=lf

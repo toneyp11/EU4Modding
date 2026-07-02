@@ -1,0 +1,17 @@
+# Automation Tools - startup hook.
+
+# Start the global monthly timer exactly once. on_startup fires on new games and
+# on every save load, so guard with a flag so we never spawn a duplicate chain.
+# (Pending delayed events are saved with the game, so the chain survives reloads.)
+on_startup = {
+	if = {
+		limit = { NOT = { has_global_flag = atools_timer_started } }
+		set_global_flag = atools_timer_started
+		1 = {
+			set_variable = { which = atools_months value = 0 }
+			set_variable = { which = atools_cede_interval value = 12 }   # default: every 12 months
+			set_variable = { which = atools_cede_count value = 0 }
+			province_event = { id = atools.1 days = 30 }
+		}
+	}
+}

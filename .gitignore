@@ -1,0 +1,13 @@
+# OS / editor junk
+Thumbs.db
+desktop.ini
+.DS_Store
+*.swp
+*~
+
+# Personal, machine-specific Claude settings (keep shared settings.json tracked)
+.claude/settings.local.json
+
+# Scratch
+scratch/
+tmp/

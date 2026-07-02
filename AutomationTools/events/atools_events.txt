@@ -1,0 +1,36 @@
+namespace = atools
+
+# Global monthly timer. Lives on province 1 (Stockholm - always exists) and
+# re-fires itself every 30 days, so it ticks about once per month regardless of
+# how many countries exist. Started (once) from on_startup.
+province_event = {
+	id = atools.1
+	title = none
+	desc = none
+	hidden = yes
+	is_triggered_only = yes
+
+	immediate = {
+		# Schedule next month's tick (keeps the chain alive).
+		province_event = { id = atools.1 days = 30 }
+
+		# Count the elapsed month on the hub (province 1 = ROOT here).
+		change_variable = { which = atools_months value = 1 }
+
+		# If the auto-cede tool is enabled and the interval has elapsed, cede.
+		if = {
+			limit = {
+				has_global_flag = atools_cede_enabled
+				check_variable = { which = atools_cede_interval value = 1 }         # interval >= 1
+				check_variable = { which = atools_months which = atools_cede_interval } # months >= interval
+			}
+			set_variable = { which = atools_months value = 0 }
+			atools_cede_effect = yes
+		}
+	}
+
+	# Hidden events still want one option; never shown to the player.
+	option = {
+		name = atools.1.a
+	}
+}
