@@ -23,6 +23,10 @@ AutomationTools/
 The launcher descriptor `mod/AutomationTools.mod` (in the OneDrive game-data `mod/`
 folder) points `path=` here.
 
+`interface/provinceview.gui` is a **verbatim copy of vanilla 1.37.5** with our elements
+injected (whole-file override — `.gui` don't merge). To see only our edits or to
+re-migrate after a game patch: `bash scripts/gui-diff.sh provinceview.gui`.
+
 ## Architecture
 
 **Panel + launcher** (`provinceview.gui` + `automation_tools.txt`)

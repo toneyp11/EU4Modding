@@ -578,10 +578,11 @@ guiTypes = {
 
 			# The tools panel. Orientation = CENTER anchors to the PARENT
 			# (province_window), and the province view is engine-docked to the
-			# lower-left of the screen. So position = (-halfSize) + (screenCentre -
+			# lower-left of the screen, so position = (-halfSize) + (screenCentre -
 			# provinceWindowCentre) to land on the true SCREEN centre.
-			# Calibrated for 2560x1440: {-125,-150} + {1011,-281} = {886,-431}.
-			# Nudge these two numbers to fine-tune (x+ = right, y+ = down; ~1 px each).
+			# The x/y below are calibrated for 2560x1440 (RESOLUTION-SPECIFIC) and were
+			# re-tuned when the panel was resized. Nudge to fine-tune: x+ = right,
+			# y+ = down, ~1 unit per pixel.
 			windowType = {
 				name = "atools_panel"
 				scripted = yes

@@ -77,11 +77,36 @@ several things per run.
   `ACCESS_VIOLATION` = usually a render-time GUI bug; `STACK_OVERFLOW` = string/loc
   recursion, e.g. `.GetValue` in a log).
 
+## Dev helpers (use these constantly)
+
+- `bash scripts/check-mod.sh` — **run before every restart.** Lints for the silent
+  failures: brace balance, `.yml` BOM, GUI↔custom_gui bindings, referenced-but-undefined
+  loc keys / events / scripted effects, and `.GetValue`-in-log (crash). Exit 0 = safe.
+- `bash scripts/read-logs.sh [N]` — after a test run: ATOOLS traces, real errors (noise
+  filtered), undefined-event-target counts, latest crash summary.
+- `bash scripts/vanilla.sh <regex> [subdir] [max]` — search the vanilla install for a
+  working idiom / to confirm a token exists (faster than manual greps).
+- `bash scripts/gui-diff.sh [file.gui]` — show ONLY our injections into an overridden
+  `.gui` (vs the vanilla copy). Use for reviewing GUI edits and for patch migration.
+
+## Conventions
+
+- Everything is prefixed `atools_` / `ATOOLS_` (script names, flags, vars) or
+  `AUTOMATION_` (older loc keys) so it's greppable and collision-free.
+- **Hub = province 1** (Stockholm, always exists): global vars live here
+  (`1 = { set_variable … }`; display `[1.var.GetValue]`).
+- Global flags: `atools_panel_open`, `atools_cede_enabled`, `atools_timer_started`,
+  `atools_dbg_logged`. Global timer event = `atools.1`.
+- New tools follow the pattern in [docs/automationtools.md](docs/automationtools.md):
+  UI toggle → global flag → logic in a pulse or the `atools.1` timer.
+
 ## Repo layout
 
 - `AutomationTools/` — the mod. Architecture & state: [docs/automationtools.md](docs/automationtools.md).
-- `docs/` — modding reference (lessons) + mod architecture.
-- `scripts/` — `check-mod.sh` (validate) and `read-logs.sh` (inspect game logs).
+- `docs/eu4-modding-reference.md` — EU4 lessons, idioms, crash cases + fixes.
+- `docs/automationtools.md` — mod architecture, state, and how to add a tool.
+- `scripts/` — `check-mod.sh`, `read-logs.sh`, `vanilla.sh`, `gui-diff.sh`.
+- `.claude/settings.json` — permission allowlist (read-only cmds + in-repo edits).
 
 ## Maintenance
 

@@ -10,14 +10,29 @@
       "Bash(wc:*)",
       "Bash(find:*)",
       "Bash(xxd:*)",
+      "Bash(comm:*)",
+      "Bash(diff:*)",
       "Bash(bash scripts/check-mod.sh:*)",
       "Bash(bash scripts/read-logs.sh:*)",
+      "Bash(bash scripts/vanilla.sh:*)",
+      "Bash(bash scripts/gui-diff.sh:*)",
       "Bash(./scripts/check-mod.sh:*)",
       "Bash(./scripts/read-logs.sh:*)",
+      "Bash(./scripts/vanilla.sh:*)",
+      "Bash(./scripts/gui-diff.sh:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
-      "Bash(git show:*)"
+      "Bash(git show:*)",
+      "Bash(git add:*)",
+      "Edit(AutomationTools/**)",
+      "Write(AutomationTools/**)",
+      "Edit(docs/**)",
+      "Write(docs/**)",
+      "Edit(scripts/**)",
+      "Write(scripts/**)",
+      "Edit(CLAUDE.md)",
+      "Edit(README.md)"
     ]
   }
 }
