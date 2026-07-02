@@ -88,6 +88,9 @@ several things per run.
   working idiom / to confirm a token exists (faster than manual greps).
 - `bash scripts/gui-diff.sh [file.gui]` — show ONLY our injections into an overridden
   `.gui` (vs the vanilla copy). Use for reviewing GUI edits and for patch migration.
+- **CWTools** (VS Code) gives live in-editor EU4 validation — a bigger net than
+  `check-mod.sh`. Setup is fiddly (it defaults to the wrong game for our path); see
+  [docs/cwtools-setup.md](docs/cwtools-setup.md). Config: `AutomationTools/.vscode/settings.json`.
 
 ## Conventions
 

@@ -1,0 +1,6 @@
+{
+  "//": "CWTools config for the AutomationTools EU4 mod. Auto-detection picks the WRONG game here (the dev path has no game name and junctions get resolved away), so we force the EU4 ruleset manually. cache.eu4 = vanilla install for validating against base-game defs.",
+  "cwtools.cache.eu4": "C:/Program Files (x86)/Steam/steamapps/common/Europa Universalis IV",
+  "cwtools.rules_version": "manual",
+  "cwtools.rules_folder": "C:/Development/cwtools-eu4-config"
+}
