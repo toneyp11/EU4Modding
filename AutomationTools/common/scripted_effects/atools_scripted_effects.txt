@@ -10,7 +10,6 @@ atools_cede_effect = {
 	log = "ATOOLS: ---- cede effect running ----"
 	clear_global_event_target = atools_top_nation
 	clear_global_event_target = atools_receiver
-	clear_global_event_target = atools_candidate
 
 	# 1) Largest INDEPENDENT nation by total development.
 	#    A candidate is #1 if no OTHER country has development >= its own.

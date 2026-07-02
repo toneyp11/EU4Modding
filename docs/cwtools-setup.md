@@ -32,6 +32,23 @@ Good state shows: `Rules loaded`, `Parsing 6 files` / `Validating N files`, and
 `Looking for effect ... in the 1454 effects loaded` (NOT "0 effects loaded"). A bogus
 token like `zzz_not_a_real_token = yes` should get a red squiggle.
 
+## Known FALSE POSITIVES (CWTools rule gaps — do NOT "fix" these)
+CWTools' EU4 rules don't model some valid idioms we rely on. These errors are bogus:
+- **`CW263: 1 is unexpected in ...`** — `1 = {}` (scope to province by ID) is valid
+  vanilla. CWTools doesn't model numeric province scopes. We use province 1 as the hub.
+- **`CW263: NOT is unexpected in limit`** — `NOT` in a `limit` is always valid. CWTools
+  can't infer a scripted effect's scope, so it mis-validates the limit blocks inside it.
+- **`CW266: ... command 1 which does not exist`** — `[1.var.GetValue]` (display a
+  province-1 variable in loc) is valid vanilla (`[1.GPW_counting_variable.GetValue]`).
+- **`CW240: Expecting a float, got <our_var>`** (warning) — our runtime variables set
+  via `1 = { set_variable }`; CWTools can't track them (downstream of the `1={}` gap).
+
+**Rule of thumb:** trust CWTools on unknown tokens/typos, scope mismatches on normal
+country/province scopes, and undefined loc keys. Distrust anything about `1 = {}`,
+`[1....]`, `NOT`-in-limit inside scripted effects, and our own variables. A cleaner-panel
+option (not done, to avoid churning working code): save province 1 as a global event
+target at startup and use `event_target:atools_hub` everywhere instead of `1 = {}`.
+
 ## Notes
 - The `repoPath = ...stellaris...` line in the init log is just a default echo; the
   rules actually loaded are the manual EU4 ones (paths under `cwtools-eu4-config`).
