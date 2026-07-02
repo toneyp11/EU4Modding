@@ -94,6 +94,10 @@ several things per run.
 - **CWTools** (VS Code) gives live in-editor EU4 validation — a bigger net than
   `check-mod.sh`. Setup is fiddly (it defaults to the wrong game for our path); see
   [docs/cwtools-setup.md](docs/cwtools-setup.md). Config: `AutomationTools/.vscode/settings.json`.
+- **VS Code tasks** (`AutomationTools/.vscode/tasks.json`) wire the loop into the editor:
+  `Ctrl+Shift+B` = Validate mod; `Tasks: Run Task` → Read logs / GUI diff / Launch game
+  (Steam) / Validate + Launch. NOTE: launching still goes through the Paradox launcher
+  (Steam DRM) → click Play → observer; the game restart itself can't be automated away.
 
 ## Conventions
 
