@@ -9,8 +9,14 @@
 set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MOD="$ROOT/AutomationTools"
+# Where the launcher reads the mod from, and the external CWTools config.
+DEPLOYED_MOD="C:/Users/isaac/OneDrive/Documents/Paradox Interactive/Europa Universalis IV/mod/AutomationTools.mod"
+CWTOOLS_CONFIG="C:/Development/cwtools-eu4-config"
 fail=0
 warn=0
+
+# Fail loud if the mod dir itself is missing (don't silently "pass" on nothing).
+[ -d "$MOD" ] || { echo "FATAL: mod dir not found: $MOD"; exit 2; }
 
 section() { echo; echo "== $* =="; }
 
@@ -75,6 +81,19 @@ if [ -n "$prevhits" ]; then
   echo "  warn  '= PREV' comparison found (often doesn't resolve; prefer event_target):"
   echo "$prevhits" | sed 's/^/          /'; warn=1
 else echo "  OK    no '= PREV' comparisons in code"; fi
+
+section "Deployment & external tooling"
+# The game loads the mod via this descriptor; if it's missing or points elsewhere,
+# you're editing files the game never reads (a silent, maddening failure).
+# descriptor uses Windows form (C:/...); git-bash $MOD is MSYS (/c/...). Normalize.
+WINMOD="$(cygpath -m "$MOD" 2>/dev/null || echo "$MOD")"
+if [ -f "$DEPLOYED_MOD" ]; then
+  if grep -qF "path=\"$WINMOD\"" "$DEPLOYED_MOD"; then echo "  OK    launcher descriptor points at this repo"
+  else echo "  FAIL  launcher descriptor does NOT point at $WINMOD :"; grep -E '^path=' "$DEPLOYED_MOD" | sed 's/^/          /'; fail=1; fi
+else echo "  FAIL  launcher descriptor missing: $DEPLOYED_MOD (game won't load the mod)"; fail=1; fi
+# CWTools silently uses the wrong game's rules if this is gone (see docs/cwtools-setup.md).
+if [ -d "$CWTOOLS_CONFIG" ]; then echo "  OK    CWTools EU4 config present"
+else echo "  warn  CWTools config missing ($CWTOOLS_CONFIG) - in-editor validation degrades silently"; warn=1; fi
 
 echo
 if [ "$fail" = 0 ]; then

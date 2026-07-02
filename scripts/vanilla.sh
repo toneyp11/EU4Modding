@@ -11,6 +11,7 @@
 #   bash scripts/vanilla.sh 'name = "GFX_button'       interface
 set -u
 EU4="C:/Program Files (x86)/Steam/steamapps/common/Europa Universalis IV"
+[ -d "$EU4" ] || { echo "FATAL: EU4 install not found: $EU4"; exit 2; }
 pat="${1:?usage: vanilla.sh <pattern> [subdir] [max]}"
 sub="${2:-}"
 max="${3:-60}"

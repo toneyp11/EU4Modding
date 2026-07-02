@@ -5,6 +5,7 @@
 # Usage: bash scripts/gui-diff.sh [file.gui]   (omit to diff all overridden .gui)
 set -u
 EU4="C:/Program Files (x86)/Steam/steamapps/common/Europa Universalis IV"
+[ -d "$EU4" ] || { echo "FATAL: EU4 install not found: $EU4"; exit 2; }
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MOD="$ROOT/AutomationTools"
 one="${1:-}"

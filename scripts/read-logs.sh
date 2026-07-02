@@ -5,6 +5,7 @@
 set -u
 GAMEDATA="C:/Users/isaac/OneDrive/Documents/Paradox Interactive/Europa Universalis IV"
 LOGS="$GAMEDATA/logs"
+[ -d "$LOGS" ] || { echo "FATAL: EU4 logs dir not found: $LOGS (has the game run? is the path right?)"; exit 2; }
 N="${1:-40}"
 NOISE="economic_ideas|EmperorOfChina|Synthetics|no default sub-unit|no primary culture|no religion specified|FAILED TO CLEAR SPY"
 

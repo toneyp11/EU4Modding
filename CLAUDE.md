@@ -81,7 +81,10 @@ several things per run.
 
 - `bash scripts/check-mod.sh` — **run before every restart.** Lints for the silent
   failures: brace balance, `.yml` BOM, GUI↔custom_gui bindings, referenced-but-undefined
-  loc keys / events / scripted effects, and `.GetValue`-in-log (crash). Exit 0 = safe.
+  loc keys / events / scripted effects, `.GetValue`-in-log (crash), and that the
+  launcher descriptor still points at this repo. Exit 0 = safe. **A git pre-commit hook
+  runs this automatically and blocks a broken commit** (bypass: `git commit --no-verify`).
+  On a fresh clone, enable it once: `git config core.hooksPath scripts/git-hooks`.
 - `bash scripts/read-logs.sh [N]` — after a test run: ATOOLS traces, real errors (noise
   filtered), undefined-event-target counts, latest crash summary.
 - `bash scripts/vanilla.sh <regex> [subdir] [max]` — search the vanilla install for a

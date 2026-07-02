@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Pre-commit guard: never commit a broken mod. Runs the validator; a hard FAIL
+# (exit != 0) aborts the commit. Warnings do NOT block. Deliberate bypass: --no-verify.
+# Enabled via: git config core.hooksPath scripts/git-hooks
+repo="$(git rev-parse --show-toplevel)"
+out="$(bash "$repo/scripts/check-mod.sh" 2>&1)"; code=$?
+if [ "$code" -ne 0 ]; then
+  echo "$out"
+  echo
+  echo ">> pre-commit: mod validation FAILED (exit $code) - commit aborted."
+  echo ">> fix the issues above, or bypass with:  git commit --no-verify"
+  exit 1
+fi
+exit 0
