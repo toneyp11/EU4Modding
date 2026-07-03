@@ -1,8 +1,31 @@
-# Automation Tools - startup hook.
+##############################################################################
+# AutomationTools - BACKEND (framework: startup / state init)
+# ---------------------------------------------------------------------------
+# Initialises the hub state and starts the global timer, once per game.
+#
+# ============================ UI <-> BACKEND CONTRACT =======================
+# The UI and backend communicate ONLY through these. Keep them stable and the
+# UI can be redesigned without touching any backend file (and vice-versa).
+#
+# GLOBAL FLAGS
+#   atools_panel_open       UI-only   : tools panel is open (window visibility)
+#   atools_cede_enabled     UI writes / backend reads : auto-cede tool on/off
+#
+# HUB VARIABLES (on province 1; UI displays via [1.<var>.GetValue])
+#   atools_cede_interval    UI writes / backend reads : months between cessions (>=1)
+#   atools_cede_count       backend writes / UI reads : total cessions this game
+#
+# BACKEND-INTERNAL (not part of the UI contract; do not touch from UI)
+#   atools_months           timer's elapsed-month counter (hub var)
+#   atools_timer_started    guard so the timer chain starts only once
+#   atools_have_top / atools_have_receiver : per-run guards inside the cede effect
+#   event targets: atools_top_nation, atools_receiver
+# ===========================================================================
+##############################################################################
 
-# Start the global monthly timer exactly once. on_startup fires on new games and
-# on every save load, so guard with a flag so we never spawn a duplicate chain.
-# (Pending delayed events are saved with the game, so the chain survives reloads.)
+# Start the monthly timer exactly once. on_startup fires on new games AND every
+# save load, so the flag guard prevents duplicate timer chains (pending delayed
+# events persist in the save, so the chain itself survives reloads).
 on_startup = {
 	if = {
 		limit = { NOT = { has_global_flag = atools_timer_started } }

@@ -1,8 +1,15 @@
+##############################################################################
+# AutomationTools - BACKEND (framework: the global timer / dispatcher)
+# ---------------------------------------------------------------------------
+# A hidden, self-refiring monthly tick on province 1 (the "hub", always exists).
+# Each tick it reads the UI<->backend contract (enable flags + interval var) and
+# dispatches to the enabled tools' scripted effects. Adding a tool = add another
+# "if enabled ... call its effect" block here (or in a dispatch effect).
+# Started once from on_startup. See docs/automationtools.md for the contract.
+##############################################################################
+
 namespace = atools
 
-# Global monthly timer. Lives on province 1 (Stockholm - always exists) and
-# re-fires itself every 30 days, so it ticks about once per month regardless of
-# how many countries exist. Started (once) from on_startup.
 province_event = {
 	id = atools.1
 	title = none
@@ -11,26 +18,25 @@ province_event = {
 	is_triggered_only = yes
 
 	immediate = {
-		# Schedule next month's tick (keeps the chain alive).
+		# Keep the monthly chain alive (~30 days; drifts slightly from calendar).
 		province_event = { id = atools.1 days = 30 }
 
-		# Count the elapsed month on the hub (province 1 = ROOT here).
+		# Elapsed-month counter, kept on the hub (ROOT = province 1 here).
 		change_variable = { which = atools_months value = 1 }
 
-		# If the auto-cede tool is enabled and the interval has elapsed, cede.
+		# --- Tool: Auto-cede from #1 nation ---
+		# Fire when enabled and the configured interval (months) has elapsed.
 		if = {
 			limit = {
 				has_global_flag = atools_cede_enabled
-				check_variable = { which = atools_cede_interval value = 1 }         # interval >= 1
-				check_variable = { which = atools_months which = atools_cede_interval } # months >= interval
+				check_variable = { which = atools_cede_interval value = 1 }             # interval >= 1
+				check_variable = { which = atools_months which = atools_cede_interval }  # months >= interval
 			}
 			set_variable = { which = atools_months value = 0 }
 			atools_cede_effect = yes
 		}
 	}
 
-	# Hidden events still want one option; never shown to the player.
-	option = {
-		name = atools.1.a
-	}
+	# Hidden events still require one option; never shown.
+	option = { name = atools.1.a }
 }

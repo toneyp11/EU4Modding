@@ -1,86 +1,55 @@
-# Automation Tools - scripted effects
-# (INSTRUMENTED with log = "ATOOLS: ..." -> game.log while debugging. Removed once working.)
+##############################################################################
+# AutomationTools - BACKEND (tool logic)
+# ---------------------------------------------------------------------------
+# Depends ONLY on the UI<->backend contract (global flags + province-1 "hub"
+# variables). It never references GUI element names, so the UI can be redesigned
+# freely without touching this file. Contract is documented in
+# docs/automationtools.md and common/on_actions/atools_on_actions.txt.
 #
-# NOTE: we do NOT use PREV for the comparisons - `total_development = PREV` does not
-# resolve (vanilla never uses it and it produced an invalid scope). Instead we save
-# each candidate as event_target:atools_candidate and compare against that, which is
-# the verified-working idiom (tag = event_target:X, total_development = <scope>).
+# Reliability notes (hard-won):
+#  - `exists = event_target:X` is unreliable here (returns false even when the
+#    target IS saved), so we guard with GLOBAL FLAGS instead.
+#  - Finding the biggest/weakest nation uses vanilla's threshold-ladder idiom
+#    (numeric total_development + any_country/random_country), not mid-iteration
+#    event_target comparisons (which don't resolve).
+##############################################################################
 
+# === Tool: Auto-cede from #1 nation (anti-snowball) =========================
+# The highest-development nation cedes one border province to a weak neighbour.
+# Called from the atools.1 timer when the tool is enabled. Selection is by
+# development BRACKET (tunable below), not exact rank.
 atools_cede_effect = {
-	log = "ATOOLS: ---- cede effect running ----"
-	clear_global_event_target = atools_top_nation
-	clear_global_event_target = atools_receiver
+	clr_global_flag = atools_have_top
+	clr_global_flag = atools_have_receiver
 
-	# 1) Largest INDEPENDENT nation by total development.
-	#    A candidate is #1 if no OTHER country has development >= its own.
-	every_country = {
-		limit = { is_subject = no }
-		save_event_target_as = atools_candidate
-		if = {
-			limit = {
-				NOT = {
-					any_country = {
-						NOT = { tag = event_target:atools_candidate }
-						total_development = event_target:atools_candidate
-					}
-				}
-			}
-			save_global_event_target_as = atools_top_nation
-		}
-	}
+	# 1) Top nation: first (highest) populated development bracket.
+	if = { limit = { any_country = { is_subject = no total_development = 1500 } } random_country = { limit = { is_subject = no total_development = 1500 } save_event_target_as = atools_top_nation set_global_flag = atools_have_top } }
+	else_if = { limit = { any_country = { is_subject = no total_development = 1200 } } random_country = { limit = { is_subject = no total_development = 1200 } save_event_target_as = atools_top_nation set_global_flag = atools_have_top } }
+	else_if = { limit = { any_country = { is_subject = no total_development = 1000 } } random_country = { limit = { is_subject = no total_development = 1000 } save_event_target_as = atools_top_nation set_global_flag = atools_have_top } }
+	else_if = { limit = { any_country = { is_subject = no total_development = 800 } }  random_country = { limit = { is_subject = no total_development = 800 } save_event_target_as = atools_top_nation set_global_flag = atools_have_top } }
+	else_if = { limit = { any_country = { is_subject = no total_development = 600 } }  random_country = { limit = { is_subject = no total_development = 600 } save_event_target_as = atools_top_nation set_global_flag = atools_have_top } }
+	else_if = { limit = { any_country = { is_subject = no total_development = 500 } }  random_country = { limit = { is_subject = no total_development = 500 } save_event_target_as = atools_top_nation set_global_flag = atools_have_top } }
+	else_if = { limit = { any_country = { is_subject = no total_development = 400 } }  random_country = { limit = { is_subject = no total_development = 400 } save_event_target_as = atools_top_nation set_global_flag = atools_have_top } }
+	else_if = { limit = { any_country = { is_subject = no total_development = 300 } }  random_country = { limit = { is_subject = no total_development = 300 } save_event_target_as = atools_top_nation set_global_flag = atools_have_top } }
+	else_if = { limit = { any_country = { is_subject = no total_development = 200 } }  random_country = { limit = { is_subject = no total_development = 200 } save_event_target_as = atools_top_nation set_global_flag = atools_have_top } }
+	else_if = { limit = { any_country = { is_subject = no total_development = 100 } }  random_country = { limit = { is_subject = no total_development = 100 } save_event_target_as = atools_top_nation set_global_flag = atools_have_top } }
 
 	if = {
-		limit = { exists = event_target:atools_top_nation }
-		event_target:atools_top_nation = { log = "ATOOLS: top nation = [This.GetName]" }
+		limit = { has_global_flag = atools_have_top }
 
-		# DIAGNOSTIC (logs once): list every independent neighbour of the top nation.
-		# (Only scope NAME commands work in logs - variable .GetValue is unsupported
-		#  and stack-overflows, so we log names, not dev numbers.)
-		if = {
-			limit = { NOT = { has_global_flag = atools_dbg_logged } }
-			set_global_flag = atools_dbg_logged
-			log = "ATOOLS DBG: ---- independent neighbours of top nation ----"
-			every_country = {
-				limit = {
-					is_subject = no
-					NOT = { tag = event_target:atools_top_nation }
-					is_neighbor_of = event_target:atools_top_nation
-				}
-				log = "ATOOLS DBG neighbour: [This.GetName]"
-			}
-			log = "ATOOLS DBG: ---- end neighbours ----"
+		# 2) Recipient: weakest independent neighbour (first populated low bracket).
+		event_target:atools_top_nation = {
+			if = { limit = { any_neighbor_country = { is_subject = no NOT = { total_development = 20 } } }  random_neighbor_country = { limit = { is_subject = no NOT = { total_development = 20 } } save_event_target_as = atools_receiver set_global_flag = atools_have_receiver } }
+			else_if = { limit = { any_neighbor_country = { is_subject = no NOT = { total_development = 40 } } }  random_neighbor_country = { limit = { is_subject = no NOT = { total_development = 40 } } save_event_target_as = atools_receiver set_global_flag = atools_have_receiver } }
+			else_if = { limit = { any_neighbor_country = { is_subject = no NOT = { total_development = 80 } } }  random_neighbor_country = { limit = { is_subject = no NOT = { total_development = 80 } } save_event_target_as = atools_receiver set_global_flag = atools_have_receiver } }
+			else_if = { limit = { any_neighbor_country = { is_subject = no NOT = { total_development = 150 } } } random_neighbor_country = { limit = { is_subject = no NOT = { total_development = 150 } } save_event_target_as = atools_receiver set_global_flag = atools_have_receiver } }
+			else_if = { limit = { any_neighbor_country = { is_subject = no NOT = { total_development = 300 } } } random_neighbor_country = { limit = { is_subject = no NOT = { total_development = 300 } } save_event_target_as = atools_receiver set_global_flag = atools_have_receiver } }
+			else_if = { limit = { any_neighbor_country = { is_subject = no } } random_neighbor_country = { limit = { is_subject = no } save_event_target_as = atools_receiver set_global_flag = atools_have_receiver } }
 		}
 
-		# 2) WEAKEST independent nation bordering the top nation.
-		#    Candidate qualifies if no OTHER bordering nation is strictly weaker.
-		every_country = {
-			limit = {
-				is_subject = no
-				NOT = { tag = event_target:atools_top_nation }
-				is_neighbor_of = event_target:atools_top_nation
-			}
-			save_event_target_as = atools_candidate
-			if = {
-				limit = {
-					NOT = {
-						any_country = {
-							is_subject = no
-							NOT = { tag = event_target:atools_top_nation }
-							NOT = { tag = event_target:atools_candidate }
-							is_neighbor_of = event_target:atools_top_nation
-							NOT = { total_development = event_target:atools_candidate }  # strictly weaker exists
-						}
-					}
-				}
-				save_global_event_target_as = atools_receiver
-			}
-		}
-
+		# 3) Cede one of the top nation's provinces bordering the recipient.
 		if = {
-			limit = { exists = event_target:atools_receiver }
-			event_target:atools_receiver = { log = "ATOOLS: receiver = [This.GetName]" }
-
-			# 3) Cede a border province from top nation to receiver.
+			limit = { has_global_flag = atools_have_receiver }
 			event_target:atools_top_nation = {
 				random_owned_province = {
 					limit = {
@@ -91,11 +60,8 @@ atools_cede_effect = {
 					cede_province = event_target:atools_receiver
 					remove_core = event_target:atools_top_nation
 					1 = { change_variable = { which = atools_cede_count value = 1 } }
-					log = "ATOOLS: CEDED province [This.GetName]"
 				}
 			}
 		}
-		else = { log = "ATOOLS: no receiver (top has no independent neighbour)" }
 	}
-	else = { log = "ATOOLS: no top nation found" }
 }

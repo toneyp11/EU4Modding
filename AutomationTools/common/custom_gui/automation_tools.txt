@@ -1,31 +1,35 @@
-# Automation Tools - custom GUI behaviour
-# Each object's `name` must match a `scripted = yes` element in interface/provinceview.gui.
-# These elements live inside province_window, so ROOT = the clicked province.
+##############################################################################
+# AutomationTools - UI LAYER (custom GUI bindings / input)
+# ---------------------------------------------------------------------------
+# Binds the scripted GUI elements in interface/provinceview.gui to the
+# UI<->backend contract. Each object's `name` MUST match a `scripted = yes`
+# element in the .gui file. This layer ONLY reads/writes contract flags and hub
+# variables (see on_actions header) - it contains NO game logic and never calls
+# backend effects, so redesigning the panel means editing only this file, the
+# .gui, and localisation. The backend never looks at these names.
+##############################################################################
 
-# --- Master open/close button on the province panel ---------------------------
+# === Panel framework: open / close ==========================================
+
+# Master button on the province view - toggles the panel's visibility flag.
 custom_button = {
 	name = atools_master_toggle
-	potential = { always = yes }          # button always present on the province view
-	trigger = { always = yes }            # always clickable
+	potential = { always = yes }
+	trigger = { always = yes }
 	effect = {
-		if = {
-			limit = { has_global_flag = atools_panel_open }
-			clr_global_flag = atools_panel_open
-		}
-		else = {
-			set_global_flag = atools_panel_open
-		}
+		if = { limit = { has_global_flag = atools_panel_open } clr_global_flag = atools_panel_open }
+		else = { set_global_flag = atools_panel_open }
 	}
 	tooltip = AUTOMATION_TOOLS_BTN_TT
 }
 
-# --- The panel window (shown only while the flag is set) -----------------------
+# The panel window - visible only while the flag is set (gates all children).
 custom_window = {
 	name = atools_panel
 	potential = { has_global_flag = atools_panel_open }
 }
 
-# --- Close (X) button inside the panel ----------------------------------------
+# Close (X) button inside the panel.
 custom_button = {
 	name = atools_close
 	potential = { always = yes }
@@ -34,31 +38,24 @@ custom_button = {
 	tooltip = AUTOMATION_CLOSE_TT
 }
 
-# =============================================================================
-# Tool: Auto-cede from the #1 nation (anti-snowball)
-# =============================================================================
+# === Tool controls: Auto-cede from #1 nation ================================
 
-# Enable/disable toggle
+# On/off toggle -> contract flag atools_cede_enabled (frame 2 = on, 1 = off).
 custom_button = {
 	name = atools_toggle_cede
 	potential = { always = yes }
 	trigger = { always = yes }
 	effect = {
-		if = {
-			limit = { has_global_flag = atools_cede_enabled }
-			clr_global_flag = atools_cede_enabled
-		}
-		else = {
-			set_global_flag = atools_cede_enabled
-		}
+		if = { limit = { has_global_flag = atools_cede_enabled } clr_global_flag = atools_cede_enabled }
+		else = { set_global_flag = atools_cede_enabled }
 	}
 	frame = { number = 2 trigger = { has_global_flag = atools_cede_enabled } }
 	frame = { number = 1 trigger = { always = yes } }
 	tooltip = ATOOLS_CEDE_TT
 }
 
-# Interval selector: one button that cycles 1 -> 6 -> 12 -> 24 MONTHS -> 1
-# (current value is shown in the status text below). check_variable is a >= compare.
+# Interval selector -> contract var atools_cede_interval. One button cycling
+# 1 -> 6 -> 12 -> 24 months (value shown in the status text). check_variable is >=.
 custom_button = {
 	name = atools_interval_cycle
 	potential = { always = yes }
@@ -66,39 +63,24 @@ custom_button = {
 	effect = {
 		1 = {
 			if = {
-				# currently in [1,6) -> go to 6
-				limit = {
-					check_variable = { which = atools_cede_interval value = 1 }
-					NOT = { check_variable = { which = atools_cede_interval value = 6 } }
-				}
+				limit = { check_variable = { which = atools_cede_interval value = 1 } NOT = { check_variable = { which = atools_cede_interval value = 6 } } }
 				set_variable = { which = atools_cede_interval value = 6 }
 			}
 			else_if = {
-				# currently in [6,12) -> go to 12
-				limit = {
-					check_variable = { which = atools_cede_interval value = 6 }
-					NOT = { check_variable = { which = atools_cede_interval value = 12 } }
-				}
+				limit = { check_variable = { which = atools_cede_interval value = 6 } NOT = { check_variable = { which = atools_cede_interval value = 12 } } }
 				set_variable = { which = atools_cede_interval value = 12 }
 			}
 			else_if = {
-				# currently in [12,24) -> go to 24
-				limit = {
-					check_variable = { which = atools_cede_interval value = 12 }
-					NOT = { check_variable = { which = atools_cede_interval value = 24 } }
-				}
+				limit = { check_variable = { which = atools_cede_interval value = 12 } NOT = { check_variable = { which = atools_cede_interval value = 24 } } }
 				set_variable = { which = atools_cede_interval value = 24 }
 			}
-			else = {
-				# >=24 (or unset) -> back to 1
-				set_variable = { which = atools_cede_interval value = 1 }
-			}
+			else = { set_variable = { which = atools_cede_interval value = 1 } }
 		}
 	}
 	tooltip = ATOOLS_INTERVAL_CYCLE_TT
 }
 
-# Status read-out: shows the current interval + total cessions so far.
+# Read-out: current interval + total cessions (text keyed by name in localisation).
 custom_text_box = {
 	name = atools_cede_status
 	potential = { always = yes }

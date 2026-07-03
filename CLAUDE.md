@@ -61,9 +61,10 @@ several things per run.
 - **Province owner test**: `owned_by = event_target:X`.
 - **Global once-per-period timer**: self-refiring hidden `province_event` on
   province 1 (`days = 30`), started once from `on_startup` behind a flag guard.
-- **NEVER put a variable `.GetValue` inside a `log` string** → `EXCEPTION_STACK_OVERFLOW`.
-  `.GetValue` is only valid in localisation/UI. Scope *name* commands
-  (`[This.GetName]`, `[Root.GetName]`) ARE fine in logs.
+- **NEVER put ANY scope command (`[X.GetValue]`, `[X.GetName]`, any `[X.Get…]`) inside a
+  `log` string** → `EXCEPTION_STACK_OVERFLOW`. Both `.GetValue` AND `.GetName` have
+  crashed this mod. Log plain ASCII markers only; show values/names in loc/UI instead.
+  (`check-mod.sh` now flags `.Get…` in any log.)
 
 ## Debugging playbook
 
@@ -128,8 +129,14 @@ this setup.
 ## Current state
 
 Custom **Automation Tools** panel opens from the province view in observer mode
-(centered, translucent). First real tool — **"Auto-cede from #1 nation"** (anti-snowball):
-each interval the highest-development nation cedes a border province to a neighbour.
-Cessions fire correctly; **open issue**: the "weakest neighbour" recipient selection
-needs verification (picked Dai Viet for Ming when a weaker neighbour was expected).
-The cede effect currently carries temporary `ATOOLS:`/`ATOOLS DBG:` trace logging.
+(centered, translucent). First real tool — **"Auto-cede from #1 nation"** (anti-snowball)
+— **works**: every configured interval (months) the highest-development nation cedes a
+border province to a weak neighbour. Code is split into a **UI layer** and a **backend
+layer** that talk only through a documented flag/variable contract, so the panel can be
+redesigned without touching the logic — see [docs/automationtools.md](docs/automationtools.md).
+All debug logging has been stripped (production-clean).
+
+**Architecture rule:** UI (`interface/`, `custom_gui/`, `localisation/`) and backend
+(`on_actions/`, `events/`, `scripted_effects/`) communicate ONLY via the contract
+(global flags + province-1 hub vars) documented at the top of
+`common/on_actions/atools_on_actions.txt`. Neither layer references the other's internals.

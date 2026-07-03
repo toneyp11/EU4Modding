@@ -71,10 +71,10 @@ if [ -z "$smiss" ]; then echo "  OK    all called atools_*_effect are defined"
 else echo "  FAIL  called but undefined scripted effects:"; echo "$smiss" | sed 's/^/          /'; fail=1; fi
 
 section "Known-crash / known-broken patterns"
-if grep -rnE 'log = "[^"]*\.GetValue' "$MOD" >/dev/null 2>&1; then
-  echo "  FAIL  '.GetValue' inside a log string (stack-overflow crash):"
-  grep -rnE 'log = "[^"]*\.GetValue' "$MOD" | sed 's/^/          /'; fail=1
-else echo "  OK    no variable .GetValue in any log string"; fi
+if grep -rnE 'log = "[^"]*\.Get[A-Za-z]+' "$MOD" >/dev/null 2>&1; then
+  echo "  FAIL  scope command (.GetValue/.GetName/...) inside a log string (stack-overflow crash):"
+  grep -rnE 'log = "[^"]*\.Get[A-Za-z]+' "$MOD" | sed 's/^/          /'; fail=1
+else echo "  OK    no scope .Get commands in any log string"; fi
 # (ignore comment lines: content after file:line: starting with #)
 prevhits=$(grep -rnE '= PREV\b' "$MOD"/common "$MOD"/events 2>/dev/null | grep -vE ':[0-9]+:[[:space:]]*#')
 if [ -n "$prevhits" ]; then
