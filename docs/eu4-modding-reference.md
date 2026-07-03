@@ -42,6 +42,18 @@ vanilla, so we copied vanilla verbatim and injected our elements inside
 
 ## 3. Verified script idioms
 
+### Guarding on saved event targets — use FLAGS, not `exists`
+`exists = event_target:X` is **unreliable in this mod** — it returned `false` even when
+the target was correctly saved (proven: `event_target:X = { ... }` scope-in worked, but
+`exists` said no). Guard on a global flag instead:
+```
+random_country = { limit = { ... } save_event_target_as = my_target set_global_flag = have_target }
+if = { limit = { has_global_flag = have_target } event_target:my_target = { ... } }
+```
+Also: `save_event_target_as`/`save_global_event_target_as` and effect iterators
+(`random_country`/`every_country`) DO work from a province-event scope — the saves
+succeed; it was only the `exists` check that lied.
+
 ### Find the largest / smallest country (NO `PREV`)
 `total_development = PREV` does **not** resolve inside a nested `any_country` (vanilla
 never uses `= PREV`). Save each candidate as an event target and compare to it:

@@ -61,6 +61,12 @@ several things per run.
 - **Province owner test**: `owned_by = event_target:X`.
 - **Global once-per-period timer**: self-refiring hidden `province_event` on
   province 1 (`days = 30`), started once from `on_startup` behind a flag guard.
+- **Guard on saved event targets with GLOBAL FLAGS, not `exists`**: `exists =
+  event_target:X` returns *false here even when the target IS saved* (verified: you
+  can scope into it, but `exists` says no). Set a flag when you save, check the flag.
+- **Find biggest/smallest by a numeric threshold ladder** (`total_development = 1000`
+  → 800 → … with `any_country`/`random_country`), not mid-iteration
+  `total_development = event_target:candidate` / `= PREV` (don't resolve reliably).
 - **NEVER put ANY scope command (`[X.GetValue]`, `[X.GetName]`, any `[X.Get…]`) inside a
   `log` string** → `EXCEPTION_STACK_OVERFLOW`. Both `.GetValue` AND `.GetName` have
   crashed this mod. Log plain ASCII markers only; show values/names in loc/UI instead.
