@@ -21,11 +21,13 @@ province_event = {
 		# Keep the monthly chain alive (~30 days; drifts slightly from calendar).
 		province_event = { id = atools.1 days = 30 }
 
-		# Elapsed-month counter, kept on the hub (ROOT = province 1 here).
+		# Each tool has its OWN elapsed-month counter + interval, so their cadences are
+		# independent. Bump both counters every tick; when a counter reaches its tool's
+		# interval, reset it and run that tool (if enabled).
 		change_variable = { which = atools_months value = 1 }
+		change_variable = { which = atools_convert_months value = 1 }
 
-		# Once the configured interval elapses, run whichever tools are enabled, then
-		# reset the counter. (Tools share one cadence; add more "if enabled" lines here.)
+		# Anti-shrink tool (atools_cede_interval / atools_months).
 		if = {
 			limit = {
 				check_variable = { which = atools_cede_interval value = 1 }             # interval >= 1
@@ -33,6 +35,16 @@ province_event = {
 			}
 			set_variable = { which = atools_months value = 0 }
 			if = { limit = { has_global_flag = atools_cede_enabled } atools_cede_effect = yes }
+		}
+
+		# Auto-convert tool (atools_convert_interval / atools_convert_months).
+		if = {
+			limit = {
+				check_variable = { which = atools_convert_interval value = 1 }                 # interval >= 1
+				check_variable = { which = atools_convert_months which = atools_convert_interval } # months >= interval
+			}
+			set_variable = { which = atools_convert_months value = 0 }
+			if = { limit = { has_global_flag = atools_convert_enabled } atools_convert_effect = yes }
 		}
 	}
 

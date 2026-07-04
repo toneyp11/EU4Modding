@@ -86,3 +86,52 @@ custom_text_box = {
 	potential = { always = yes }
 	tooltip = ATOOLS_CEDE_STATUS_TT
 }
+
+# === Tool controls: Auto-convert religion & culture =========================
+
+# On/off toggle -> contract flag atools_convert_enabled (frame 2 = on, 1 = off).
+custom_button = {
+	name = atools_toggle_convert
+	potential = { always = yes }
+	trigger = { always = yes }
+	effect = {
+		if = { limit = { has_global_flag = atools_convert_enabled } clr_global_flag = atools_convert_enabled }
+		else = { set_global_flag = atools_convert_enabled }
+	}
+	frame = { number = 2 trigger = { has_global_flag = atools_convert_enabled } }
+	frame = { number = 1 trigger = { always = yes } }
+	tooltip = ATOOLS_CONVERT_TT
+}
+
+# Interval selector -> contract var atools_convert_interval. One button cycling
+# 12 -> 24 -> 60 -> 120 months (own cadence, independent of the shrink interval).
+custom_button = {
+	name = atools_convert_interval_cycle
+	potential = { always = yes }
+	trigger = { always = yes }
+	effect = {
+		1 = {
+			if = {
+				limit = { check_variable = { which = atools_convert_interval value = 12 } NOT = { check_variable = { which = atools_convert_interval value = 24 } } }
+				set_variable = { which = atools_convert_interval value = 24 }
+			}
+			else_if = {
+				limit = { check_variable = { which = atools_convert_interval value = 24 } NOT = { check_variable = { which = atools_convert_interval value = 60 } } }
+				set_variable = { which = atools_convert_interval value = 60 }
+			}
+			else_if = {
+				limit = { check_variable = { which = atools_convert_interval value = 60 } NOT = { check_variable = { which = atools_convert_interval value = 120 } } }
+				set_variable = { which = atools_convert_interval value = 120 }
+			}
+			else = { set_variable = { which = atools_convert_interval value = 12 } }
+		}
+	}
+	tooltip = ATOOLS_CONVERT_INTERVAL_CYCLE_TT
+}
+
+# Read-out: current convert interval (text keyed by name in localisation).
+custom_text_box = {
+	name = atools_convert_status
+	potential = { always = yes }
+	tooltip = ATOOLS_CONVERT_STATUS_TT
+}

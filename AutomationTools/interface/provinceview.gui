@@ -587,8 +587,8 @@ guiTypes = {
 				name = "atools_panel"
 				scripted = yes
 				backGround = ""
-				position = { x = 886 y = -386 }
-				size = { x = 250 y = 210 }
+				position = { x = 886 y = -421 }
+				size = { x = 250 y = 280 }
 				moveable = 1
 				Orientation = "CENTER"
 
@@ -600,7 +600,7 @@ guiTypes = {
 					name = "atools_bg"
 					quadTextureSprite = "gfx_transp_black_50"
 					position = { x = 0 y = 0 }
-					size = { x = 250 y = 210 }
+					size = { x = 250 y = 280 }
 					Orientation = "UPPER_LEFT"
 				}
 
@@ -655,6 +655,40 @@ guiTypes = {
 					font = "vic_18"
 					maxWidth = 224
 					maxHeight = 60
+				}
+
+				# ---- Tool: auto-convert religion & culture ----
+				guiButtonType = {
+					name = "atools_toggle_convert"
+					scripted = yes
+					position = { x = 16 y = 172 }
+					quadTextureSprite = "GFX_checkbox"
+					Orientation = "UPPER_LEFT"
+				}
+				instantTextBoxType = {
+					name = "atools_toggle_convert_label"
+					position = { x = 46 y = 175 }
+					font = "vic_18"
+					text = "ATOOLS_CONVERT_LABEL"
+					maxWidth = 200
+					maxHeight = 24
+				}
+				guiButtonType = {
+					name = "atools_convert_interval_cycle"
+					scripted = yes
+					position = { x = 16 y = 204 }
+					quadTextureSprite = "button_type_8"
+					buttonText = "ATOOLS_CONVERT_INTERVAL_CYCLE"
+					buttonFont = "vic_18"
+					Orientation = "UPPER_LEFT"
+				}
+				instantTextBoxType = {
+					name = "atools_convert_status"
+					scripted = yes
+					position = { x = 16 y = 246 }
+					font = "vic_18"
+					maxWidth = 224
+					maxHeight = 24
 				}
 			}
 

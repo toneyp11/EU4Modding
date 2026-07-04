@@ -2,8 +2,12 @@
 
 Running list of planned work and ideas, so we don't lose them. Newest context at top.
 
-## In progress
-- (nothing active)
+- (awaiting in-game test) **Auto-convert religion & culture tool** — new toggle with its
+  OWN interval (`atools_convert_interval`, default 60 mo, cycles 12/24/60/120), fully
+  decoupled from the shrink interval. Each convert run, every owned province whose
+  religion/culture differs from its owner's has a 20% chance to flip toward the owner
+  (`change_religion = owner` / `change_culture = owner`) — including same-group cases
+  (Catholic→Orthodox) the AI never converts. Chance is tunable in `atools_convert_effect`.
 
 ## Paused
 - [ ] **Region-based breakaway tool** — split a nation's holdings *outside its capital's

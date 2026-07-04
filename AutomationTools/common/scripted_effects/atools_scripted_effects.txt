@@ -152,3 +152,24 @@ atools_split_effect = {
 		else = { log = "ATOOLS split no-receiver" }
 	}
 }
+
+# === Tool: Auto-convert religion & culture ==================================
+# Fights religious/cultural stagnation (vanilla AI almost never converts same-group
+# "heretic" provinces or foreign cultures). Each interval, every owned province whose
+# religion/culture differs from its owner's has a CHANCE to flip toward the owner, so
+# the map homogenises gradually rather than all at once. change_religion/change_culture
+# accept a country scope; `owner` = the province's owner (religion + primary culture).
+# The chance below is the per-province, per-interval percent (tune to taste).
+atools_convert_effect = {
+	every_province = {
+		limit = { is_city = yes }
+		if = {
+			limit = { NOT = { religion = owner } }
+			random = { chance = 20 change_religion = owner }
+		}
+		if = {
+			limit = { NOT = { culture = owner } }
+			random = { chance = 20 change_culture = owner }
+		}
+	}
+}
