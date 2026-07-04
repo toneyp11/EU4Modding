@@ -9,7 +9,8 @@
 #
 # GLOBAL FLAGS
 #   atools_panel_open       UI-only   : tools panel is open (window visibility)
-#   atools_cede_enabled     UI writes / backend reads : auto-cede tool on/off
+#   atools_cede_enabled     UI writes / backend reads : anti-snowball tool on/off
+#                           (release possible nations first, else cede to weakest)
 #
 # HUB VARIABLES (on province 1; UI displays via [1.<var>.GetValue])
 #   atools_cede_interval    UI writes / backend reads : months between cessions (>=1)
@@ -19,6 +20,7 @@
 #   atools_months           timer's elapsed-month counter (hub var)
 #   atools_timer_started    guard so the timer chain starts only once
 #   atools_have_top / atools_have_receiver : per-run guards inside the cede effect
+#   atools_td_before / atools_td_after : top nation's dev snapshot (release detection)
 #   event targets: atools_top_nation, atools_receiver
 # ===========================================================================
 ##############################################################################

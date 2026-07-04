@@ -54,28 +54,35 @@ Also: `save_event_target_as`/`save_global_event_target_as` and effect iterators
 (`random_country`/`every_country`) DO work from a province-event scope — the saves
 succeed; it was only the `exists` check that lied.
 
-### Find the largest / smallest country (NO `PREV`)
-`total_development = PREV` does **not** resolve inside a nested `any_country` (vanilla
-never uses `= PREV`). Save each candidate as an event target and compare to it:
-
+### Find the EXACT largest / smallest country — running max/min (NO `PREV`)
+The clean, reliable way (the vanilla `flavorBYZ.txt` idiom: `every_ally = { limit = {
+total_development = event_target:X } save_event_target_as = X }`). Iterate, and each
+candidate that beats the running best overwrites the saved target — **mutating and
+comparing the same target mid-iteration works fine**. Seed on the first candidate with a
+flag guard (because `exists` on an event target lies here). Maximum:
 ```
-every_country = {
-    limit = { is_subject = no }
-    save_event_target_as = atools_candidate
+every_country = {                     # every_neighbor_country for "weakest neighbour"
     if = {
         limit = {
-            NOT = { any_country = {
-                NOT = { tag = event_target:atools_candidate }   # exclude self
-                total_development = event_target:atools_candidate # other's dev >= candidate's
-            } }
+            OR = {
+                NOT = { has_global_flag = atools_have_top }        # first candidate seeds
+                total_development = event_target:atools_top_nation # candidate.dev >= best.dev
+            }
         }
-        save_global_event_target_as = atools_top_nation          # the strict maximum
+        save_event_target_as = atools_top_nation
+        set_global_flag = atools_have_top
     }
 }
 ```
-Numeric triggers **do** accept a scope on the right: `total_development = ROOT/FROM/
-event_target:X` (all `>=` comparisons). For "weakest", flip to
-`NOT = { total_development = event_target:candidate }` (strictly weaker exists).
+For the **minimum**, flip the compare to `NOT = { total_development =
+event_target:atools_receiver }` (candidate strictly below the best replaces it). Ties:
+max keeps the last iterated, min keeps the first — good enough (exact dev ties are rare).
+
+Numeric triggers **do** accept a scope on the right: `total_development =
+ROOT/FROM/event_target:X` (all `>=` comparisons). Only **`PREV` is broken**
+(`total_development = PREV` does not resolve — vanilla never uses it). This replaced an
+earlier threshold-ladder workaround (`total_development = 1000 → 800 → …`), which was a
+detour around the `exists` bug, not a real limitation of scope-compares.
 
 ### Borders / neighbours
 - Country-level: `is_neighbor_of = event_target:X` (true across land **or straits**).
@@ -101,6 +108,35 @@ event_target:atools_top_nation = {
     }
 }
 ```
+
+### Release nations (fragment a country) — vassals vs independent
+`release_all_possible_countries = yes` (country scope) releases every nation releasable
+from the country's **owned** provinces — but **as vassals**, not free nations (vanilla
+`FlavorGBR.txt` pairs it with `release_all_subjects = yes` right after). To fragment a
+giant into **independent** states, call both:
+```
+event_target:X = { release_all_possible_countries = yes  release_all_subjects = yes }
+```
+Note `release_all_subjects` frees ALL of X's subjects (including pre-existing ones), not
+just the newly-released ones.
+
+**Detecting whether a release actually happened** (no trigger for "has releasables"):
+snapshot development around it and compare — released land leaves the country, so dev falls.
+```
+event_target:X = {
+    export_to_variable = { which = td_before value = total_development }
+    release_all_possible_countries = yes  release_all_subjects = yes
+    export_to_variable = { which = td_after value = total_development }
+    if = { limit = { NOT = { check_variable = { which = td_after which = td_before } } } # td_after < td_before
+        ... something was released ... }
+    else = { ... nothing releasable → fallback ... }
+}
+```
+`export_to_variable = { which = <var> value = <token> }` writes a numeric game value into
+a scope variable. Verified value tokens include `total_development` (11 vanilla uses);
+`num_of_cities` is a valid *trigger* but was **not** seen as an export `value` — prefer
+`total_development`. Exact equality holds when nothing changed, so the `>=` compare is a
+reliable "did nothing happen" test even though dev can be fractional.
 
 ### Global once-per-period timer
 Per-country pulses (`on_monthly_pulse`) fire once *per country*. For a single global
@@ -159,6 +195,7 @@ Variables attach to a scope. We keep global counters on **province 1** as the "h
 | Panel centres on the province UI, not screen | `Orientation="CENTER"` is parent-relative; province view is docked lower-left | keep `CENTER` + `position = (-halfSize) + (screenCentre − provinceWindowCentre)`; calibrated `{886,-461}`-ish at 2560×1440; resolution-specific |
 | `.yml` changes don't show | missing BOM | write UTF-8 with BOM |
 | GUI changes don't apply without restart | modded-GUI hot-reload is unreliable | restart; there is no good workaround |
+| Tool never targets / never gives to a vassal | `is_subject = no` on the candidate/recipient finder silently excludes ALL subjects — a huge vassal can't be picked as #1, and no one can cede to any vassal | drop `is_subject = no` if subjects should be eligible; empty `{}` limit → use `always = yes` |
 
 **Vanilla log noise to ignore** (not mod bugs): `Synthetics has no primary culture/
 religion` (hidden Synthetic Dawn tag), `AST … no default sub-unit` (Astrakhan),

@@ -24,16 +24,15 @@ province_event = {
 		# Elapsed-month counter, kept on the hub (ROOT = province 1 here).
 		change_variable = { which = atools_months value = 1 }
 
-		# --- Tool: Auto-cede from #1 nation ---
-		# Fire when enabled and the configured interval (months) has elapsed.
+		# Once the configured interval elapses, run whichever tools are enabled, then
+		# reset the counter. (Tools share one cadence; add more "if enabled" lines here.)
 		if = {
 			limit = {
-				has_global_flag = atools_cede_enabled
 				check_variable = { which = atools_cede_interval value = 1 }             # interval >= 1
 				check_variable = { which = atools_months which = atools_cede_interval }  # months >= interval
 			}
 			set_variable = { which = atools_months value = 0 }
-			atools_cede_effect = yes
+			if = { limit = { has_global_flag = atools_cede_enabled } atools_cede_effect = yes }
 		}
 	}
 

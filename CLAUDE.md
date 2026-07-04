@@ -51,10 +51,16 @@ several things per run.
 
 ## Idioms that bit us (use these, not the "obvious" version)
 
-- **Find the biggest/smallest country**: `every_country` → `save_event_target_as`
-  each candidate → `if` no other country beats it, compared via
-  `total_development = event_target:candidate`. **Do NOT use `PREV`** —
-  `total_development = PREV` does not resolve and yields a broken scope.
+- **Find the EXACT biggest/smallest country** — running max/min (the vanilla
+  `flavorBYZ` idiom, VERIFIED working here): iterate `every_country` /
+  `every_neighbor_country`; a candidate whose dev beats the current best overwrites the
+  saved target; the first candidate seeds it (guarded by a flag, since `exists` lies).
+  Max: `limit = { OR = { NOT = { has_global_flag = have } total_development =
+  event_target:best } }`. Min: flip to `NOT = { total_development = event_target:best }`
+  (strictly-smaller replaces). Mutating and comparing the SAME target mid-iteration is
+  fine. **Do NOT use `PREV`** (`total_development = PREV` does not resolve) — but
+  `total_development = event_target:X` / `= ROOT` **do** resolve. This supersedes the
+  old threshold-ladder workaround (that was a detour around the `exists` bug, not this).
 - **"Does A border B"**: `is_neighbor_of = event_target:B` (land or strait). Do NOT
   hand-roll `any_owned_province = { any_neighbor_province = { owner = { tag = … } } }`
   — it silently returns false.
@@ -64,9 +70,6 @@ several things per run.
 - **Guard on saved event targets with GLOBAL FLAGS, not `exists`**: `exists =
   event_target:X` returns *false here even when the target IS saved* (verified: you
   can scope into it, but `exists` says no). Set a flag when you save, check the flag.
-- **Find biggest/smallest by a numeric threshold ladder** (`total_development = 1000`
-  → 800 → … with `any_country`/`random_country`), not mid-iteration
-  `total_development = event_target:candidate` / `= PREV` (don't resolve reliably).
 - **NEVER put ANY scope command (`[X.GetValue]`, `[X.GetName]`, any `[X.Get…]`) inside a
   `log` string** → `EXCEPTION_STACK_OVERFLOW`. Both `.GetValue` AND `.GetName` have
   crashed this mod. Log plain ASCII markers only; show values/names in loc/UI instead.
@@ -135,11 +138,16 @@ this setup.
 ## Current state
 
 Custom **Automation Tools** panel opens from the province view in observer mode
-(centered, translucent). First real tool — **"Auto-cede from #1 nation"** (anti-snowball)
-— **works**: every configured interval (months) the highest-development nation cedes a
-border province to a weak neighbour. Code is split into a **UI layer** and a **backend
-layer** that talk only through a documented flag/variable contract, so the panel can be
-redesigned without touching the logic — see [docs/automationtools.md](docs/automationtools.md).
+(centered, translucent). First real tool — **"Auto-shrink: largest nation"**
+(anti-snowball) — **works**: every configured interval (months) the **exact** most-developed
+nation is shrunk by first **releasing every possible nation as independent**
+(`release_all_possible_countries` + `release_all_subjects`); if nothing is releasable
+(detected via a `total_development` before/after snapshot), it instead **cedes a border
+province to its exact weakest neighbour**. Both the #1 and the weakest neighbour are found
+by an exact running max/min over `every_country`/`every_neighbor_country` (no dev
+brackets); subjects are eligible on both sides. Code is split into a **UI layer** and a
+**backend layer** that talk only through a documented flag/variable contract, so the panel
+can be redesigned without touching the logic — see [docs/automationtools.md](docs/automationtools.md).
 All debug logging has been stripped (production-clean).
 
 **Architecture rule:** UI (`interface/`, `custom_gui/`, `localisation/`) and backend
