@@ -22,14 +22,15 @@ Running list of planned work and ideas, so we don't lose them. Newest context at
   has 1mo test value). `override_country_name` does NOT resolve scope commands (so exact
   per-province names impossible — area names are the max).
 
-## Compatibility hardening (STANDING PRIORITY — user runs this with other mods)
-- [ ] **Dynamic hub province** — stop hard-coding province 1 for global vars + the atools.1
-  timer; pick a guaranteed-existing province at startup so a map mod that renumbers/removes
-  province 1 doesn't break all state.
-- [ ] **Minimise the provinceview.gui footprint / document load order** — .gui REPLACES,
-  so we conflict with any mod that edits province view. Can't fully avoid; keep injection
-  minimal and note load-order guidance for users.
-- [ ] Keep verifying: no new hard-coded province IDs / area / region names on main.
+## Compatibility (STANDING PRIORITY — user runs this with other mods)
+- [x] **Audit done** — backend logic is fully map-agnostic; only province 1 (hub) is
+  hard-coded, no area/region names, no un-prefixed loc keys, provinceview.gui is purely
+  additive. See [docs/compatibility.md](docs/compatibility.md).
+- [x] **Enforced** — check-mod.sh Compatibility section (non-hub province ids, un-prefixed
+  loc keys, provinceview.gui additiveness). Load-order guidance documented.
+- [ ] **Dynamic hub province** (only needed for total conversions) — stop hard-coding
+  province 1; pick a guaranteed-existing province at startup. Low priority: province ID 1
+  exists in every map, so map-expansion mods are already fine.
 
 ## Planned
 - [ ] **Tune interval cadence** — default interval is a first-pass value; adjust to

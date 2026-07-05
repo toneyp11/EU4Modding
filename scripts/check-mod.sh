@@ -82,6 +82,28 @@ if [ -n "$prevhits" ]; then
   echo "$prevhits" | sed 's/^/          /'; warn=1
 else echo "  OK    no '= PREV' comparisons in code"; fi
 
+section "Compatibility (must stay usable alongside other mods)"
+# (a) Hard-coded province scopes: only province 1 (the documented hub) is sanctioned.
+#     Any other `<n> = {` is map-specific and breaks on mods that renumber provinces.
+badids=$(grep -rnoE '\b[0-9]+ = \{' "$MOD/common" "$MOD/events" 2>/dev/null | grep -vE ':1 = \{$')
+if [ -z "$badids" ]; then echo "  OK    no hard-coded province ids except the hub (province 1)"
+else echo "  warn  hard-coded province id other than the hub (map-mod risk; or a random_list weight):"; echo "$badids" | sed 's/^/          /'; warn=1; fi
+# (b) Every loc key must be prefixed (atools_/ATOOLS_/AUTOMATION_) so we never clobber
+#     another mod's or vanilla's localisation.
+badloc=$(grep -hoE '^[[:space:]]+[A-Za-z0-9_.]+:[0-9]' "$MOD"/localisation/*.yml 2>/dev/null \
+         | grep -oE '[A-Za-z0-9_.]+' | grep -vE '^[0-9]+$' \
+         | grep -vE '^(atools|ATOOLS|AUTOMATION)' | sort -u)
+if [ -z "$badloc" ]; then echo "  OK    every loc key is prefixed (no vanilla/other-mod key overridden)"
+else echo "  FAIL  un-prefixed loc key(s) - would override vanilla/other mods:"; echo "$badloc" | sed 's/^/          /'; fail=1; fi
+# (c) Our provinceview.gui override must be PURELY ADDITIVE vs vanilla (only append hunks).
+#     If it changes/removes vanilla lines, we'd strip vanilla behaviour when we win load order.
+VANILLA_GUI="C:/Program Files (x86)/Steam/steamapps/common/Europa Universalis IV/interface/provinceview.gui"
+if [ -f "$VANILLA_GUI" ] && [ -f "$MOD/interface/provinceview.gui" ]; then
+  nonadd=$(diff "$VANILLA_GUI" "$MOD/interface/provinceview.gui" 2>/dev/null | grep -E '^[0-9]+(,[0-9]+)?[cd][0-9]')
+  if [ -z "$nonadd" ]; then echo "  OK    provinceview.gui override is purely additive (vanilla behaviour intact)"
+  else echo "  warn  provinceview.gui CHANGES/REMOVES vanilla lines (or vanilla was updated) - review:"; echo "$nonadd" | sed 's/^/          /'; warn=1; fi
+else echo "  warn  vanilla provinceview.gui not found - skipped additive check"; warn=1; fi
+
 section "Deployment & external tooling"
 # The game loads the mod via this descriptor; if it's missing or points elsewhere,
 # you're editing files the game never reads (a silent, maddening failure).

@@ -64,7 +64,11 @@ several things per run.
 - **Keep all names prefixed** (`atools_`/`ATOOLS_`) so nothing collides with other mods'
   tags/flags/vars/loc keys.
 - **Known fragility (see backlog to harden):** province 1 is hard-coded as the state
-  "hub" (all global vars + the atools.1 timer) — breaks if a map mod renumbers/removes it.
+  "hub" (all global vars + the atools.1 timer) — robust for map-expansion mods (province
+  ID 1 exists in every map) but would break under a total conversion.
+- **`check-mod.sh` enforces this** (Compatibility section: no non-hub hard-coded province
+  ids, all loc keys prefixed, `provinceview.gui` purely additive). Full guide +
+  load-order guidance: [docs/compatibility.md](docs/compatibility.md).
 
 ## Idioms that bit us (use these, not the "obvious" version)
 
