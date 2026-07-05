@@ -9,23 +9,29 @@ Running list of planned work and ideas, so we don't lose them. Newest context at
   (`change_religion = owner` / `change_culture = owner`) — including same-group cases
   (Catholic→Orthodox) the AI never converts. Chance is tunable in `atools_convert_effect`.
 
-## Paused
-- [ ] **Region-based breakaway tool** — split a nation's holdings *outside its capital's
-  region* into separate nations (matches EU4's "French Russia" naming). PROGRESS:
-  detection CONFIRMED working via `capital_scope = { save_event_target_as = P }` then
-  `region = event_target:P` (region= needs a PROVINCE, not a country). Creation drafted
-  as cede-to-living-core-holder (`random_core_country` + `cede_province = event_target`).
-  OPEN DECISION — recipient coverage (3 cases): (1) living independent claimant → works;
-  (2) dead historical claimant → needs revive (release=TAG is literal-only → hardcoded
-  list or custom pool); (3) no claimant ever (colonies) → only the custom tag pool covers
-  it. Dormant spike code is in scripted_effects (`atools_split_effect`), not wired to the
-  timer. Resume by re-adding the timer call + choosing a creation route.
+## Shelved (removed from main; preserved on branch `wip-exclave-breakaway`)
+- [ ] **Exclave breakaway + 100-tag custom-nation pool** — DISABLED per user (2026-07).
+  Full working feature lives on branch `wip-exclave-breakaway` (commit 5a47b46) + the
+  generator `scripts/gen_pool.sh`. What it does: detects exclaves via `is_overseas = yes`
+  (the correct connectivity test — supersedes the old region criterion, which wrongly
+  chopped contiguous multi-region empires), cedes claimable exclaves to living
+  core-holders, and breaks the rest away as new nations from a 100-tag pool (AT0-BV9),
+  named after their area (`atools_name_by_area`). WHY SHELVED: not fully validated +
+  compatibility concerns. WHEN RESUMING: (1) confirm `is_overseas` catches land exclaves
+  in-game; (2) do compatibility hardening FIRST (below); (3) restore 12mo interval (branch
+  has 1mo test value). `override_country_name` does NOT resolve scope commands (so exact
+  per-province names impossible — area names are the max).
+
+## Compatibility hardening (STANDING PRIORITY — user runs this with other mods)
+- [ ] **Dynamic hub province** — stop hard-coding province 1 for global vars + the atools.1
+  timer; pick a guaranteed-existing province at startup so a map mod that renumbers/removes
+  province 1 doesn't break all state.
+- [ ] **Minimise the provinceview.gui footprint / document load order** — .gui REPLACES,
+  so we conflict with any mod that edits province view. Can't fully avoid; keep injection
+  minimal and note load-order guidance for users.
+- [ ] Keep verifying: no new hard-coded province IDs / area / region names on main.
 
 ## Planned
-- [ ] **True exclave breakaways** — split off blocks with no land connection to the
-  capital (stricter than region-based). Hard: EU4 has NO connectivity trigger, so this
-  needs a multi-tick flood-fill (mark capital connected → spread to adjacent owned
-  provinces each month → unflagged = exclave). Heavy/slow; only if region-based isn't enough.
 - [ ] **Tune interval cadence** — default interval is a first-pass value; adjust to
   taste once we've watched more games. (Dev brackets are gone — now exact #1/weakest.)
 - [ ] **Polish the panel's visual design** — layout, styling, icons. Pure UI now

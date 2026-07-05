@@ -84,6 +84,17 @@ ROOT/FROM/event_target:X` (all `>=` comparisons). Only **`PREV` is broken**
 earlier threshold-ladder workaround (`total_development = 1000 → 800 → …`), which was a
 detour around the `exists` bug, not a real limitation of scope-compares.
 
+### Exclaves / "connected to the capital"
+There is **no** connectivity trigger, but you don't need a flood-fill: **`is_overseas =
+yes`** (province scope) is true exactly when the province has **no land route to its
+owner's capital through the owner's own provinces** — i.e. it's an exclave (cut off by
+water OR surrounded by foreign land). It is **never** true for contiguous land, even land
+spanning several `region`s. So for "is this a detached block", use `is_overseas = yes`,
+NOT `NOT = { region = event_target:<capital province> }` — the region test wrongly treats
+a contiguous multi-region empire as detached. (Verified: `region = event_target:<province>`
+and `area = <name>` ARE valid triggers; the flaw was the region *criterion*, not syntax.)
+Not yet re-confirmed in-game whether same-continent land exclaves count as overseas — TBD.
+
 ### Borders / neighbours
 - Country-level: `is_neighbor_of = event_target:X` (true across land **or straits**).
   Accepts scopes/event targets. **Use this** — the manual

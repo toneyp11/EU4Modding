@@ -96,63 +96,6 @@ atools_cede_effect = {
 	}
 }
 
-# === TEMP (region-breakaway task 1): detection CONFIRMED; now testing creation ==
-# A large nation's out-of-capital-region holdings are handed to a living, independent
-# nation that historically cores them (the region "returns" to its rightful owner).
-# release=TAG is literal-only, so we cede via random_core_country + cede_province=
-# event_target (both proven). Truly invented nations = custom tag pool (backlog).
-# Detection uses capital_scope + region=event_target:<capital province> (province cmp).
-# Guarded by flags (exists=event_target is unreliable). Traced; fired from the timer.
-atools_split_effect = {
-	clr_global_flag = atools_split_have
-	clr_global_flag = atools_split_recv
-
-	# 1) Target: a nation from the top development bracket (likely multi-region).
-	if = { limit = { any_country = { is_subject = no total_development = 800 } } random_country = { limit = { is_subject = no total_development = 800 } save_event_target_as = atools_split_nation set_global_flag = atools_split_have } }
-	else_if = { limit = { any_country = { is_subject = no total_development = 500 } } random_country = { limit = { is_subject = no total_development = 500 } save_event_target_as = atools_split_nation set_global_flag = atools_split_have } }
-	else_if = { limit = { any_country = { is_subject = no total_development = 300 } } random_country = { limit = { is_subject = no total_development = 300 } save_event_target_as = atools_split_nation set_global_flag = atools_split_have } }
-	else_if = { limit = { any_country = { is_subject = no total_development = 150 } } random_country = { limit = { is_subject = no total_development = 150 } save_event_target_as = atools_split_nation set_global_flag = atools_split_have } }
-
-	if = {
-		limit = { has_global_flag = atools_split_have }
-		log = "ATOOLS split target-found"
-		event_target:atools_split_nation = {
-			capital_scope = { save_event_target_as = atools_split_capprov }
-			# 2) Find a living, independent nation that cores an out-of-region province we own.
-			random_owned_province = {
-				limit = {
-					is_city = yes
-					NOT = { region = event_target:atools_split_capprov }
-					any_core_country = { NOT = { tag = event_target:atools_split_nation } is_subject = no num_of_cities = 1 }
-				}
-				random_core_country = {
-					limit = { NOT = { tag = event_target:atools_split_nation } is_subject = no num_of_cities = 1 }
-					save_global_event_target_as = atools_split_recv_ctry
-					set_global_flag = atools_split_recv
-				}
-			}
-		}
-
-		# 3) Cede that nation's out-of-region cores (which we own) back to it.
-		if = {
-			limit = { has_global_flag = atools_split_recv }
-			log = "ATOOLS split receiver-found"
-			event_target:atools_split_recv_ctry = {
-				every_core_province = {
-					limit = {
-						is_city = yes
-						owned_by = event_target:atools_split_nation
-						NOT = { region = event_target:atools_split_capprov }
-					}
-					cede_province = event_target:atools_split_recv_ctry
-				}
-			}
-			log = "ATOOLS split ceded"
-		}
-		else = { log = "ATOOLS split no-receiver" }
-	}
-}
-
 # === Tool: Auto-convert religion & culture ==================================
 # Fights religious/cultural stagnation (vanilla AI almost never converts same-group
 # "heretic" provinces or foreign cultures). Each interval, every owned province whose

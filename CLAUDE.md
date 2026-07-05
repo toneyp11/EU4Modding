@@ -49,6 +49,23 @@ several things per run.
 6. **Ignore vanilla log noise**: `Synthetics`, `AST`, "no default sub-unit",
    "no primary culture", `economic_ideas` wrong-scope. None of these are our bugs.
 
+## Compatibility (hard design constraint)
+
+**This mod MUST stay compatible with other mods — the user runs it alongside others
+(map mods especially). Weigh every change against this.**
+
+- **Prefer engine primitives over hard-coded map data.** Backend logic (`every_country`,
+  `is_overseas`, `total_development`, `release`, `change_religion = owner`, …) is
+  map-agnostic — keep it so. Avoid baking in province IDs / area / region names; if a
+  feature must enumerate them, generate it (and regenerate against the other mod's data).
+- **`common/**` MERGES** across mods (additive, safe). **`interface/*.gui` REPLACES**
+  wholesale — our `provinceview.gui` copy conflicts with any other mod that edits it
+  (load order wins). Inherent to EU4; keep our GUI footprint minimal and note it.
+- **Keep all names prefixed** (`atools_`/`ATOOLS_`) so nothing collides with other mods'
+  tags/flags/vars/loc keys.
+- **Known fragility (see backlog to harden):** province 1 is hard-coded as the state
+  "hub" (all global vars + the atools.1 timer) — breaks if a map mod renumbers/removes it.
+
 ## Idioms that bit us (use these, not the "obvious" version)
 
 - **Find the EXACT biggest/smallest country** — running max/min (the vanilla
