@@ -87,7 +87,9 @@ atools_cede_effect = {
 						}
 						add_core = event_target:atools_receiver
 						cede_province = event_target:atools_receiver
-						remove_core = event_target:atools_top_nation
+						# Only strip the giver's core if it actually had one (it may have merely
+						# OWNED, not cored, the province) - avoids "hasnt got it" error spam.
+						if = { limit = { is_core = event_target:atools_top_nation } remove_core = event_target:atools_top_nation }
 						1 = { change_variable = { which = atools_cede_count value = 1 } }
 					}
 				}

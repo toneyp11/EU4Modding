@@ -208,6 +208,16 @@ Variables attach to a scope. We keep global counters on **province 1** as the "h
 | GUI changes don't apply without restart | modded-GUI hot-reload is unreliable | restart; there is no good workaround |
 | Tool never targets / never gives to a vassal | `is_subject = no` on the candidate/recipient finder silently excludes ALL subjects — a huge vassal can't be picked as #1, and no one can cede to any vassal | drop `is_subject = no` if subjects should be eligible; empty `{}` limit → use `always = yes` |
 
+**Known VANILLA crash (not ours):** `EXCEPTION_STACK_OVERFLOW` during observer play with
+error.log spam of `Undefined event target: claims_province` and the loc `Too long has
+[claims_province.Owner.GetUsableName] threatened our borders! … claim on
+[claims_province.GetName]!`. Cause: vanilla's "historical claim" random event
+(`events/RandomEvents.txt` + `generic_events_l_english.yml`) renders with
+`claims_province` unset, and vanilla's `[…GetUsableName]` recurses on the undefined
+scope. We don't touch claims/that event/loc — confirmed not our code. Do NOT patch it
+(would require overriding a vanilla loc key / event file → breaks mod compatibility).
+Intermittent; reload and continue. Our heavy map mutation may raise its frequency.
+
 **Vanilla log noise to ignore** (not mod bugs): `Synthetics has no primary culture/
 religion` (hidden Synthetic Dawn tag), `AST … no default sub-unit` (Astrakhan),
 `economic_ideas … wrong scope`, `Undefined event target: EmperorOfChina` (no MoH DLC).
