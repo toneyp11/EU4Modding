@@ -1,0 +1,26 @@
+# AutomationTools - shared country file for the breakaway tag pool (AT0..AT9).
+# These tags are spawned at runtime by the region-breakaway tool (add_core + release);
+# they have no starting provinces. One file backs the whole pool.
+
+graphical_culture = westerngfx
+
+color = { 120 120 120 }
+
+historical_idea_groups = {
+	administrative_ideas
+	defensive_ideas
+	offensive_ideas
+	economic_ideas
+	trade_ideas
+	quality_ideas
+	quantity_ideas
+	diplomatic_ideas
+}
+
+monarch_names = {
+	"Anonymous #0" = 10
+}
+
+leader_names = {
+	Anonymous
+}

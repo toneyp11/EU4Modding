@@ -135,3 +135,19 @@ custom_text_box = {
 	potential = { always = yes }
 	tooltip = ATOOLS_CONVERT_STATUS_TT
 }
+
+# === Tool controls: Region-based breakaway ==================================
+# v1: toggle only; runs on its own interval (atools_split_interval, fixed default for
+# now). A cycle button + status will come with the panel-polish pass.
+custom_button = {
+	name = atools_toggle_split
+	potential = { always = yes }
+	trigger = { always = yes }
+	effect = {
+		if = { limit = { has_global_flag = atools_split_enabled } clr_global_flag = atools_split_enabled }
+		else = { set_global_flag = atools_split_enabled }
+	}
+	frame = { number = 2 trigger = { has_global_flag = atools_split_enabled } }
+	frame = { number = 1 trigger = { always = yes } }
+	tooltip = ATOOLS_SPLIT_TT
+}

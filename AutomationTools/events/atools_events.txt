@@ -26,6 +26,7 @@ province_event = {
 		# interval, reset it and run that tool (if enabled).
 		change_variable = { which = atools_months value = 1 }
 		change_variable = { which = atools_convert_months value = 1 }
+		change_variable = { which = atools_split_months value = 1 }
 
 		# Anti-shrink tool (atools_cede_interval / atools_months).
 		if = {
@@ -45,6 +46,16 @@ province_event = {
 			}
 			set_variable = { which = atools_convert_months value = 0 }
 			if = { limit = { has_global_flag = atools_convert_enabled } atools_convert_effect = yes }
+		}
+
+		# Region-based breakaway tool (atools_split_interval / atools_split_months).
+		if = {
+			limit = {
+				check_variable = { which = atools_split_interval value = 1 }               # interval >= 1
+				check_variable = { which = atools_split_months which = atools_split_interval } # months >= interval
+			}
+			set_variable = { which = atools_split_months value = 0 }
+			if = { limit = { has_global_flag = atools_split_enabled } atools_split_effect = yes }
 		}
 	}
 

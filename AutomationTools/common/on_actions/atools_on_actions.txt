@@ -12,19 +12,24 @@
 #   atools_cede_enabled     UI writes / backend reads : anti-snowball tool on/off
 #                           (release possible nations first, else cede to weakest)
 #   atools_convert_enabled  UI writes / backend reads : auto-convert religion+culture on/off
+#   atools_split_enabled    UI writes / backend reads : region-based breakaway on/off
 #
 # HUB VARIABLES (on province 1; UI displays via [1.<var>.GetValue])
 #   atools_cede_interval    UI writes / backend reads : months between shrink runs (>=1)
 #   atools_cede_count       backend writes / UI reads : total shrinks this game
 #   atools_convert_interval UI writes / backend reads : months between convert runs (>=1)
+#   atools_split_interval   UI writes / backend reads : months between breakaway runs (>=1)
+#   atools_split_count      backend writes / UI reads : total provinces broken away this game
 #
 # BACKEND-INTERNAL (not part of the UI contract; do not touch from UI)
 #   atools_months           shrink timer's elapsed-month counter (hub var)
 #   atools_convert_months   convert timer's elapsed-month counter (hub var)
+#   atools_split_months     breakaway timer's elapsed-month counter (hub var)
 #   atools_timer_started    guard so the timer chain starts only once
 #   atools_have_top / atools_have_receiver : per-run guards inside the cede effect
 #   atools_td_before / atools_td_after : top nation's dev snapshot (release detection)
-#   event targets: atools_top_nation, atools_receiver
+#   event targets: atools_top_nation, atools_receiver,
+#                  atools_split_nation, atools_split_capprov, atools_split_recv_ctry
 # ===========================================================================
 ##############################################################################
 
@@ -41,6 +46,9 @@ on_startup = {
 			set_variable = { which = atools_cede_count value = 0 }
 			set_variable = { which = atools_convert_months value = 0 }
 			set_variable = { which = atools_convert_interval value = 60 }   # default: convert every 60 months (5 yr) - slow drift
+			set_variable = { which = atools_split_months value = 0 }
+			set_variable = { which = atools_split_interval value = 1 }      # TEMP: 1mo for fast testing (restore to 12)
+			set_variable = { which = atools_split_count value = 0 }
 			province_event = { id = atools.1 days = 30 }
 		}
 	}

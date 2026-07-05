@@ -587,8 +587,8 @@ guiTypes = {
 				name = "atools_panel"
 				scripted = yes
 				backGround = ""
-				position = { x = 886 y = -421 }
-				size = { x = 250 y = 280 }
+				position = { x = 886 y = -436 }
+				size = { x = 250 y = 310 }
 				moveable = 1
 				Orientation = "CENTER"
 
@@ -600,7 +600,7 @@ guiTypes = {
 					name = "atools_bg"
 					quadTextureSprite = "gfx_transp_black_50"
 					position = { x = 0 y = 0 }
-					size = { x = 250 y = 280 }
+					size = { x = 250 y = 310 }
 					Orientation = "UPPER_LEFT"
 				}
 
@@ -688,6 +688,23 @@ guiTypes = {
 					position = { x = 16 y = 246 }
 					font = "vic_18"
 					maxWidth = 224
+					maxHeight = 24
+				}
+
+				# ---- Tool: region-based breakaway (v1: toggle only) ----
+				guiButtonType = {
+					name = "atools_toggle_split"
+					scripted = yes
+					position = { x = 16 y = 276 }
+					quadTextureSprite = "GFX_checkbox"
+					Orientation = "UPPER_LEFT"
+				}
+				instantTextBoxType = {
+					name = "atools_toggle_split_label"
+					position = { x = 46 y = 279 }
+					font = "vic_18"
+					text = "ATOOLS_SPLIT_LABEL"
+					maxWidth = 200
 					maxHeight = 24
 				}
 			}

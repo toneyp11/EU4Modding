@@ -84,6 +84,16 @@ ROOT/FROM/event_target:X` (all `>=` comparisons). Only **`PREV` is broken**
 earlier threshold-ladder workaround (`total_development = 1000 → 800 → …`), which was a
 detour around the `exists` bug, not a real limitation of scope-compares.
 
+### Exclaves / "connected to the capital"
+There is **no** connectivity trigger, but you don't need a flood-fill: **`is_overseas =
+yes`** (province scope) is true exactly when the province has **no land route to its
+owner's capital through the owner's own provinces** — i.e. it's an exclave (whether cut
+off by water OR surrounded by foreign land). It is **never** true for contiguous land,
+even land spanning several `region`s. So for "break off a nation's detached blocks", use
+`is_overseas = yes`, NOT `NOT = { region = event_target:<capital province> }` — the
+region test wrongly chops contiguous multi-region empires at region borders. The capital
+is never overseas, so a nation can't be emptied out this way.
+
 ### Borders / neighbours
 - Country-level: `is_neighbor_of = event_target:X` (true across land **or straits**).
   Accepts scopes/event targets. **Use this** — the manual
@@ -196,6 +206,7 @@ Variables attach to a scope. We keep global counters on **province 1** as the "h
 | `.yml` changes don't show | missing BOM | write UTF-8 with BOM |
 | GUI changes don't apply without restart | modded-GUI hot-reload is unreliable | restart; there is no good workaround |
 | Tool never targets / never gives to a vassal | `is_subject = no` on the candidate/recipient finder silently excludes ALL subjects — a huge vassal can't be picked as #1, and no one can cede to any vassal | drop `is_subject = no` if subjects should be eligible; empty `{}` limit → use `always = yes` |
+| Loop body never runs (only a log ABOVE the loop fires; nothing inside happens) | a trigger used in the `limit` is invalid **for that scope** and silently returns false, so the whole limit is false for everything. Seen: `capital_scope = { exists = yes }` — `exists` is a COUNTRY trigger, meaningless in a province scope (zero vanilla uses) | use a scope-appropriate trigger: `num_of_cities = 1` (country has ≥1 city), or `capital_scope = { is_city = yes }`. Trace INSIDE the loop, not just above it |
 
 **Vanilla log noise to ignore** (not mod bugs): `Synthetics has no primary culture/
 religion` (hidden Synthetic Dawn tag), `AST … no default sub-unit` (Astrakhan),
