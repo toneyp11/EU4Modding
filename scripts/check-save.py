@@ -86,7 +86,10 @@ def main(path):
         seg = body[start:end]
         for field, edges in graphs.items():
             f = re.search(r"\n\t\t" + field + r'="?([A-Z0-9-]{3})"?', seg)
-            if f and f.group(1) != tag:
+            if f:
+                # NOTE: do NOT skip self-references. A country that is its own overlord /
+                # colonial parent is a one-node cycle - the most degenerate case there is,
+                # and precisely what we are hunting. An earlier version filtered these out.
                 edges[tag] = f.group(1)
         if "atools_last_top" in seg:          # diagnostic flag set by the shrink tool
             last_top.append(tag)
