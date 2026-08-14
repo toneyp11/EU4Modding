@@ -32,6 +32,21 @@ loaded** is used. Our copy is **vanilla 1.37.5 verbatim + purely additive inject
   province view (the only observer-mode-friendly custom-GUI window).
 
 ## Touchpoint 2 — province 1 as the state "hub"
+All global variables live on **province 1**, and the monthly tick is normally driven by
+whichever country **owns** it. Province ID 1 exists in every EU4 map (maps number from 1),
+so map-expansion mods are fine.
+
+**Total conversions**: if province 1 is uncolonised, wasteland or sea, nobody owns it and
+the tick gate would never pass - the whole mod would silently do nothing. Guarded: at
+startup, if `NOT = { any_country = { owns = 1 } }`, a random landed country is flagged
+`atools_ticker` and drives the tick instead. The expensive `any_country` scan sits behind
+a cheap flag check, so it costs at most one scan per month.
+
+Residual limit: if that ticker country is later annexed while the hub is still unowned,
+the tick stops until the next save load (on_startup re-nominates). Only reachable on a
+map where province 1 is permanently unowned.
+
+## (old) Touchpoint 2 notes
 All global variables and the `atools.1` timer live on **province 1**. Province ID 1
 exists in every EU4 map (maps are numbered from 1), so this is robust for map-expansion
 mods. It would only break under a **total-conversion** that removes/repurposes province 1.

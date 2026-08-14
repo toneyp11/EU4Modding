@@ -10,6 +10,7 @@
 #   atools_cede_enabled     UI writes / backend reads : anti-snowball tool on/off
 #   atools_convert_enabled  UI writes / backend reads : auto-convert religion+culture on/off
 #   atools_grow_enabled     UI writes / backend reads : auto-grow weakest nation on/off
+#   atools_ticker (country flag) : fallback tick driver when nobody owns the hub
 #
 # HUB VARIABLES (on province 1; UI displays via [1.<var>.GetValue])
 #   atools_cede_interval    UI writes / backend reads : months between shrink runs (>=1)
@@ -59,6 +60,18 @@ on_startup = {
 		}
 	}
 
+	# COMPATIBILITY: the monthly tick below is normally driven by whoever owns the hub
+	# province. On a total-conversion map that province may be uncolonised, wasteland or
+	# sea - nobody owns it, the gate never passes and the whole mod silently does nothing.
+	# In that case nominate a 'ticker' country instead so the tick still runs.
+	if = {
+		limit = { NOT = { any_country = { owns = 1 } } }
+		random_country = {
+			limit = { num_of_cities = 1 }
+			set_country_flag = atools_ticker
+		}
+	}
+
 	# One-time state init.
 	if = {
 		limit = { NOT = { has_global_flag = atools_timer_started } }
@@ -78,7 +91,18 @@ on_startup = {
 # with a fresh scope each time (no event nesting, nothing accumulated in the save).
 on_monthly_pulse = {
 	if = {
-		limit = { owns = 1 }
+		# Exactly one country per month. `owns = 1` is the cheap normal path (true for a
+		# single country). The ticker branch only engages when NOBODY owns the hub, and the
+		# any_country scan sits behind the cheap flag check so it runs at most once a month.
+		limit = {
+			OR = {
+				owns = 1
+				AND = {
+					has_country_flag = atools_ticker
+					NOT = { any_country = { owns = 1 } }
+				}
+			}
+		}
 		1 = {
 			# Each tool has its OWN elapsed-month counter + interval, so their cadences
 			# are independent. Bump both counters; when a counter reaches its tool's
