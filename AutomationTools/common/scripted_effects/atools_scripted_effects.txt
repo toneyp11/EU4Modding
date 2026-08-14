@@ -27,7 +27,14 @@
 # releasable or as the only shrink route for a colonial #1.
 atools_shrink_cede_effect = {
 	log = "ATOOLS shrink F: fallback-cede"
+	clr_global_flag = atools_allow_capital_cede
 
+	# A receiver only counts if we can ACTUALLY cede to it. That test must match the
+	# province filter below exactly: the neighbour has to border a NON-CAPITAL city of
+	# the #1. Testing "any city" while the cede refuses capitals let a small nation
+	# (e.g. Granada, whose only province touching its weakest neighbour was its own
+	# capital) pick a receiver it could never hand anything to - stuck every month.
+	#
 	# Pass 1: prefer a NON-colonial receiver. Handing provinces to a colonial nation
 	# can re-parent colonial nations, and a loop in that parent chain is the leading
 	# suspect for the name-resolution crash.
@@ -35,10 +42,7 @@ atools_shrink_cede_effect = {
 		if = {
 			limit = {
 				is_colonial_nation = no
-				# Must actually be cede-able: this neighbour has to own a province
-				# bordering one of the #1's cities, or the cede below finds nothing and
-				# the #1 silently never shrinks (the "stuck" bug).
-				any_owned_province = { any_neighbor_province = { is_city = yes owned_by = event_target:atools_top_nation } }
+				any_owned_province = { any_neighbor_province = { is_city = yes is_capital = no owned_by = event_target:atools_top_nation } }
 				OR = {
 					NOT = { has_global_flag = atools_have_receiver }
 					NOT = { total_development = event_target:atools_receiver }
@@ -52,6 +56,26 @@ atools_shrink_cede_effect = {
 	# neighbours are all colonial) -> allow colonial receivers rather than stall.
 	if = {
 		limit = { NOT = { has_global_flag = atools_have_receiver } }
+		every_neighbor_country = {
+			if = {
+				limit = {
+					any_owned_province = { any_neighbor_province = { is_city = yes is_capital = no owned_by = event_target:atools_top_nation } }
+					OR = {
+						NOT = { has_global_flag = atools_have_receiver }
+						NOT = { total_development = event_target:atools_receiver }
+					}
+				}
+				save_event_target_as = atools_receiver
+				set_global_flag = atools_have_receiver
+			}
+		}
+	}
+	# Pass 3 (last resort): the #1 has no non-capital province touching anyone - the
+	# only way to shrink it is to give up the capital. EU4 relocates the seat of
+	# government automatically. Better than being wedged on the same nation forever.
+	if = {
+		limit = { NOT = { has_global_flag = atools_have_receiver } }
+		set_global_flag = atools_allow_capital_cede
 		every_neighbor_country = {
 			if = {
 				limit = {
@@ -73,9 +97,13 @@ atools_shrink_cede_effect = {
 		random_owned_province = {
 			limit = {
 				is_city = yes
-				# Never cede a capital: it forces the engine to relocate the seat of
-				# government, a needless edge case in state/name handling.
-				is_capital = no
+				# Normally never cede a capital (it forces the engine to relocate the seat
+				# of government). Pass 3 above sets the flag when the capital is the ONLY
+				# thing that can be given up, so we prefer that over stalling forever.
+				OR = {
+					is_capital = no
+					has_global_flag = atools_allow_capital_cede
+				}
 				any_neighbor_province = { owned_by = event_target:atools_receiver }
 			}
 			log = "ATOOLS shrink H: province-picked"

@@ -207,6 +207,8 @@ Variables attach to a scope. We keep global counters on **province 1** as the "h
 | `.yml` changes don't show | missing BOM | write UTF-8 with BOM |
 | GUI changes don't apply without restart | modded-GUI hot-reload is unreliable | restart; there is no good workaround |
 | Tool never targets / never gives to a vassal | `is_subject = no` on the candidate/recipient finder silently excludes ALL subjects — a huge vassal can't be picked as #1, and no one can cede to any vassal | drop `is_subject = no` if subjects should be eligible; empty `{}` limit → use `always = yes` |
+| Loop body never runs (a log ABOVE the loop fires, nothing inside does) | a trigger in the `limit` is invalid **for that scope** and silently returns false, so the limit is false for everything. Seen: `capital_scope = { exists = yes }` — `exists` is a COUNTRY trigger, meaningless in a province scope | use a scope-appropriate trigger (`num_of_cities = 1`). Put traces INSIDE the loop, not just above it |
+| Effect picks a target then does nothing, every run forever ("stuck") | **eligibility test and action filter disagree.** We picked the weakest neighbour bordering *any* of the giver's cities, but only ceded *non-capital* provinces — so a small nation whose only bordering province was its capital chose a receiver it could never hand anything to. This bit us twice (first with no border test at all, then with the capital mismatch) | keep the "can I actually do this?" trigger **in exact sync** with the action's own `limit`; add a last-resort relaxation so the effect can never wedge on one target |
 
 **Known VANILLA crash (not ours):** `EXCEPTION_STACK_OVERFLOW` during observer play with
 error.log spam of `Undefined event target: claims_province` and the loc `Too long has
