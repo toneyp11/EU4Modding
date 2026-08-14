@@ -93,6 +93,10 @@ atools_shrink_cede_effect = {
 	log = "ATOOLS shrink G: min-done"
 
 	if = {
+		limit = { NOT = { has_global_flag = atools_have_receiver } }
+		log = "ATOOLS shrink G2: NO-RECEIVER (no bordering country at all)"
+	}
+	if = {
 		limit = { has_global_flag = atools_have_receiver }
 		random_owned_province = {
 			limit = {
@@ -154,6 +158,13 @@ atools_cede_effect = {
 		if = {
 			limit = {
 				num_of_cities = 2
+				# Must border SOMEONE. Ceding is our only guaranteed shrink mechanism, and
+				# it needs a recipient country. A nation with no country neighbours (e.g. a
+				# colonial nation ringed entirely by uncolonized land, which is common in
+				# the 1590 Americas) can never be shrunk - and because it stays the #1 by
+				# development, the tool wedges on it permanently, doing nothing every month.
+				# Skipping it lets the tool move on to the next-largest nation.
+				any_neighbor_country = { always = yes }
 				OR = {
 					NOT = { has_global_flag = atools_have_top }
 					total_development = event_target:atools_top_nation
