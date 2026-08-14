@@ -32,15 +32,29 @@
 # save load, so the flag guard prevents duplicate timer chains (pending delayed
 # events persist in the save, so the chain itself survives reloads).
 on_startup = {
+	# SELF-HEAL (runs on every load, before the once-only block): make sure each
+	# interval is a sane value >= 1. A missing or zero interval silently disables its
+	# tool forever - which is what happens to a save made by an older version of the
+	# mod that never had that variable. Repairing it here keeps old saves working and
+	# means a tool can never be permanently stuck "off" because of bad data.
+	1 = {
+		if = {
+			limit = { NOT = { check_variable = { which = atools_cede_interval value = 1 } } }
+			set_variable = { which = atools_cede_interval value = 12 }       # shrink: every 12 months
+		}
+		if = {
+			limit = { NOT = { check_variable = { which = atools_convert_interval value = 1 } } }
+			set_variable = { which = atools_convert_interval value = 60 }    # convert: every 60 months (5 yr)
+		}
+	}
+
 	if = {
 		limit = { NOT = { has_global_flag = atools_timer_started } }
 		set_global_flag = atools_timer_started
 		1 = {
 			set_variable = { which = atools_months value = 0 }
-			set_variable = { which = atools_cede_interval value = 12 }      # default: shrink every 12 months
 			set_variable = { which = atools_cede_count value = 0 }
 			set_variable = { which = atools_convert_months value = 0 }
-			set_variable = { which = atools_convert_interval value = 60 }   # default: convert every 60 months (5 yr) - slow drift
 			province_event = { id = atools.1 days = 30 }
 		}
 	}
