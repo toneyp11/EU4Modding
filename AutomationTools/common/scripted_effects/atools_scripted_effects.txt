@@ -365,15 +365,33 @@ atools_grow_attempt_effect = {
 			set_country_flag = atools_last_weakest      # DIAGNOSTIC: names the target in a save
 			if = {
 				# PRIORITY 1: claim an adjacent uncolonized province outright. Needs no
-				# neighbour country, so it also works for isolated/island nations.
-				limit = { any_empty_neighbor_province = { is_wasteland = no } }
+				# neighbour COUNTRY, so this also works for isolated/island nations.
+				#
+				# SCOPE (this was wrong before and silently disabled the whole branch):
+				# any_/random_empty_neighbor_province are PROVINCE-scope iterators - the
+				# empty neighbours OF A PROVINCE. Called from country scope they just
+				# return false, so the claim never fired once. Vanilla always nests them
+				# inside a province (OrderEvents: any_owned_province = { ...
+				# any_empty_neighbor_province = { ... } }; colonial.1 is a province_event).
+				# Going through one of OUR OWN provinces also fixes attribution: in a
+				# province context create_colony settles it for that province's owner,
+				# i.e. the weakest nation.
+				limit = { any_owned_province = { any_empty_neighbor_province = { is_wasteland = no } } }
 				log = "ATOOLS grow B: claim-empty"
-				random_empty_neighbor_province = {
-					limit = { is_wasteland = no }
-					create_colony = 1000
+				random_owned_province = {
+					limit = { any_empty_neighbor_province = { is_wasteland = no } }
+					random_empty_neighbor_province = {
+						limit = { is_wasteland = no }
+						# 1000 settlers = the colony->city threshold, so the province is
+						# settled immediately as a full owned province rather than a colony
+						# that has to grow (vanilla: PropagateReligionEvents.txt).
+						create_colony = 1000
+						# Success is flagged HERE, innermost - if no non-wasteland empty
+						# neighbour existed we must not claim the attempt succeeded.
+						1 = { change_variable = { which = atools_grow_count value = 1 } }
+						set_global_flag = atools_grow_done
+					}
 				}
-				1 = { change_variable = { which = atools_grow_count value = 1 } }
-				set_global_flag = atools_grow_done
 			}
 			else = {
 				log = "ATOOLS grow C: take-from-strongest"
