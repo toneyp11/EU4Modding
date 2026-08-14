@@ -135,3 +135,51 @@ custom_text_box = {
 	potential = { always = yes }
 	tooltip = ATOOLS_CONVERT_STATUS_TT
 }
+
+# === Tool controls: Auto-grow weakest nation ================================
+
+# On/off toggle -> contract flag atools_grow_enabled (frame 2 = on, 1 = off).
+custom_button = {
+	name = atools_toggle_grow
+	potential = { always = yes }
+	trigger = { always = yes }
+	effect = {
+		if = { limit = { has_global_flag = atools_grow_enabled } clr_global_flag = atools_grow_enabled }
+		else = { set_global_flag = atools_grow_enabled }
+	}
+	frame = { number = 2 trigger = { has_global_flag = atools_grow_enabled } }
+	frame = { number = 1 trigger = { always = yes } }
+	tooltip = ATOOLS_GROW_TT
+}
+
+# Interval selector -> contract var atools_grow_interval. Cycles 6 -> 12 -> 24 -> 60.
+custom_button = {
+	name = atools_grow_interval_cycle
+	potential = { always = yes }
+	trigger = { always = yes }
+	effect = {
+		1 = {
+			if = {
+				limit = { check_variable = { which = atools_grow_interval value = 6 } NOT = { check_variable = { which = atools_grow_interval value = 12 } } }
+				set_variable = { which = atools_grow_interval value = 12 }
+			}
+			else_if = {
+				limit = { check_variable = { which = atools_grow_interval value = 12 } NOT = { check_variable = { which = atools_grow_interval value = 24 } } }
+				set_variable = { which = atools_grow_interval value = 24 }
+			}
+			else_if = {
+				limit = { check_variable = { which = atools_grow_interval value = 24 } NOT = { check_variable = { which = atools_grow_interval value = 60 } } }
+				set_variable = { which = atools_grow_interval value = 60 }
+			}
+			else = { set_variable = { which = atools_grow_interval value = 6 } }
+		}
+	}
+	tooltip = ATOOLS_GROW_INTERVAL_CYCLE_TT
+}
+
+# Read-out: current grow interval + total grows.
+custom_text_box = {
+	name = atools_grow_status
+	potential = { always = yes }
+	tooltip = ATOOLS_GROW_STATUS_TT
+}

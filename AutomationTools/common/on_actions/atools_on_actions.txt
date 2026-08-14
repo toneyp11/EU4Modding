@@ -9,15 +9,19 @@
 #   atools_panel_open       UI-only   : tools panel is open (window visibility)
 #   atools_cede_enabled     UI writes / backend reads : anti-snowball tool on/off
 #   atools_convert_enabled  UI writes / backend reads : auto-convert religion+culture on/off
+#   atools_grow_enabled     UI writes / backend reads : auto-grow weakest nation on/off
 #
 # HUB VARIABLES (on province 1; UI displays via [1.<var>.GetValue])
 #   atools_cede_interval    UI writes / backend reads : months between shrink runs (>=1)
 #   atools_cede_count       backend writes / UI reads : total shrinks this game
 #   atools_convert_interval UI writes / backend reads : months between convert runs (>=1)
+#   atools_grow_interval    UI writes / backend reads : months between grow runs (>=1)
+#   atools_grow_count       backend writes / UI reads : total grows this game
 #
 # BACKEND-INTERNAL (not part of the UI contract; do not touch from UI)
 #   atools_months           shrink tick's elapsed-month counter (hub var)
 #   atools_convert_months   convert tick's elapsed-month counter (hub var)
+#   atools_grow_months      grow tick's elapsed-month counter (hub var)
 #   atools_have_top / atools_have_receiver : per-run guards inside the shrink effect
 #   event targets: atools_top_nation, atools_receiver
 # ===========================================================================
@@ -49,6 +53,10 @@ on_startup = {
 			limit = { NOT = { check_variable = { which = atools_convert_interval value = 1 } } }
 			set_variable = { which = atools_convert_interval value = 60 }    # convert: every 60 months (5 yr)
 		}
+		if = {
+			limit = { NOT = { check_variable = { which = atools_grow_interval value = 1 } } }
+			set_variable = { which = atools_grow_interval value = 12 }       # grow: every 12 months
+		}
 	}
 
 	# One-time state init.
@@ -59,6 +67,8 @@ on_startup = {
 			set_variable = { which = atools_months value = 0 }
 			set_variable = { which = atools_cede_count value = 0 }
 			set_variable = { which = atools_convert_months value = 0 }
+			set_variable = { which = atools_grow_months value = 0 }
+			set_variable = { which = atools_grow_count value = 0 }
 		}
 	}
 }
@@ -75,6 +85,7 @@ on_monthly_pulse = {
 			# interval, reset it and run that tool (if enabled).
 			change_variable = { which = atools_months value = 1 }
 			change_variable = { which = atools_convert_months value = 1 }
+			change_variable = { which = atools_grow_months value = 1 }
 
 			# Anti-snowball shrink tool.
 			if = {
@@ -94,6 +105,16 @@ on_monthly_pulse = {
 				}
 				set_variable = { which = atools_convert_months value = 0 }
 				if = { limit = { has_global_flag = atools_convert_enabled } atools_convert_effect = yes }
+			}
+
+			# Auto-grow the weakest nation (the reverse of the shrink).
+			if = {
+				limit = {
+					check_variable = { which = atools_grow_interval value = 1 }
+					check_variable = { which = atools_grow_months which = atools_grow_interval }
+				}
+				set_variable = { which = atools_grow_months value = 0 }
+				if = { limit = { has_global_flag = atools_grow_enabled } atools_grow_effect = yes }
 			}
 		}
 	}

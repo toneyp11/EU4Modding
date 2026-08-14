@@ -271,3 +271,135 @@ atools_convert_effect = {
 	}
 	log = "ATOOLS convert: done"
 }
+
+# === Tool: Auto-grow the weakest nation (the reverse of the shrink) =========
+# Each run the world's LEAST-developed nation gains land, so with the shrink also on,
+# development converges from both ends. Order of preference:
+#   1. CLAIM an adjacent uncolonized province outright (create_colony = 1000 - 1000 is
+#      the colony->city threshold, so the province is settled INSTANTLY as a full owned
+#      province, no colonial growth phase. Vanilla idiom: PropagateReligionEvents.txt).
+#   2. TAKE one border province from its STRONGEST neighbour.
+# Note the two tools cannot ping-pong a province: both move land from strong to weak,
+# so they reinforce rather than fight each other.
+
+# --- Take one border province from the weakest nation's strongest neighbour ---
+# Called in the weakest nation's scope.
+atools_grow_take_effect = {
+	# Donor = strongest neighbour that ACTUALLY has a takeable province. This limit is
+	# kept CHARACTER-IDENTICAL to the random_owned_province limit below - letting an
+	# eligibility test drift from the action it gates is what wedged the shrink twice.
+	every_neighbor_country = {
+		if = {
+			limit = {
+				num_of_cities = 2                    # donor survives losing one province
+				any_owned_province = {
+					is_city = yes
+					is_capital = no
+					any_neighbor_province = { owned_by = event_target:atools_weakest }
+				}
+				OR = {
+					NOT = { has_global_flag = atools_have_donor }
+					total_development = event_target:atools_donor      # running MAXIMUM
+				}
+			}
+			save_event_target_as = atools_donor
+			set_global_flag = atools_have_donor
+		}
+	}
+	log = "ATOOLS grow D: donor-done"
+
+	if = {
+		limit = { has_global_flag = atools_have_donor }
+		event_target:atools_donor = {
+			random_owned_province = {
+				limit = {
+					is_city = yes
+					is_capital = no                  # never take a nation's seat of government
+					any_neighbor_province = { owned_by = event_target:atools_weakest }
+				}
+				log = "ATOOLS grow E: province-picked"
+				if = {
+					limit = { NOT = { is_core = event_target:atools_weakest } }
+					add_core = event_target:atools_weakest
+				}
+				cede_province = event_target:atools_weakest
+				log = "ATOOLS grow F: province-taken"
+				if = {
+					limit = { is_core = event_target:atools_donor }
+					remove_core = event_target:atools_donor
+				}
+				1 = { change_variable = { which = atools_grow_count value = 1 } }
+				set_global_flag = atools_grow_done
+			}
+		}
+	}
+}
+
+# --- One grow ATTEMPT: pick the smallest not-yet-skipped nation and try to grow it ---
+atools_grow_attempt_effect = {
+	clr_global_flag = atools_have_weakest
+	clr_global_flag = atools_have_donor
+
+	# Weakest = the EXACT least-developed country (running MINIMUM: a candidate strictly
+	# below the current best replaces it; the first candidate seeds it). Must own at
+	# least one city so dead/landless tags are never picked.
+	every_country = {
+		if = {
+			limit = {
+				num_of_cities = 1
+				NOT = { has_country_flag = atools_skip_weak }
+				OR = {
+					NOT = { has_global_flag = atools_have_weakest }
+					NOT = { total_development = event_target:atools_weakest }
+				}
+			}
+			save_event_target_as = atools_weakest
+			set_global_flag = atools_have_weakest
+		}
+	}
+
+	if = {
+		limit = { has_global_flag = atools_have_weakest }
+		log = "ATOOLS grow A: weakest-found"
+		event_target:atools_weakest = {
+			set_country_flag = atools_last_weakest      # DIAGNOSTIC: names the target in a save
+			if = {
+				# PRIORITY 1: claim an adjacent uncolonized province outright. Needs no
+				# neighbour country, so it also works for isolated/island nations.
+				limit = { any_empty_neighbor_province = { is_wasteland = no } }
+				log = "ATOOLS grow B: claim-empty"
+				random_empty_neighbor_province = {
+					limit = { is_wasteland = no }
+					create_colony = 1000
+				}
+				1 = { change_variable = { which = atools_grow_count value = 1 } }
+				set_global_flag = atools_grow_done
+			}
+			else = {
+				log = "ATOOLS grow C: take-from-strongest"
+				atools_grow_take_effect = yes
+			}
+		}
+
+		# Could neither claim nor take (landlocked by wasteland, or every neighbour is a
+		# one-province minor). Skip it so the next attempt targets the next-smallest.
+		if = {
+			limit = { NOT = { has_global_flag = atools_grow_done } }
+			log = "ATOOLS grow S: un-growable, skipping to next"
+			event_target:atools_weakest = { set_country_flag = atools_skip_weak }
+		}
+	}
+}
+
+# --- Orchestrator: try up to three candidates (EU4 has no loops) ---
+atools_grow_effect = {
+	clr_global_flag = atools_grow_done
+	every_country = { limit = { has_country_flag = atools_skip_weak } clr_country_flag = atools_skip_weak }
+	every_country = { limit = { has_country_flag = atools_last_weakest } clr_country_flag = atools_last_weakest }
+
+	atools_grow_attempt_effect = yes
+	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
+	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
+
+	every_country = { limit = { has_country_flag = atools_skip_weak } clr_country_flag = atools_skip_weak }
+}

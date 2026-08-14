@@ -587,8 +587,8 @@ guiTypes = {
 				name = "atools_panel"
 				scripted = yes
 				backGround = ""
-				position = { x = 886 y = -421 }
-				size = { x = 250 y = 280 }
+				position = { x = 886 y = -476 }
+				size = { x = 250 y = 390 }
 				moveable = 1
 				Orientation = "CENTER"
 
@@ -600,7 +600,7 @@ guiTypes = {
 					name = "atools_bg"
 					quadTextureSprite = "gfx_transp_black_50"
 					position = { x = 0 y = 0 }
-					size = { x = 250 y = 280 }
+					size = { x = 250 y = 390 }
 					Orientation = "UPPER_LEFT"
 				}
 
@@ -686,6 +686,40 @@ guiTypes = {
 					name = "atools_convert_status"
 					scripted = yes
 					position = { x = 16 y = 246 }
+					font = "vic_18"
+					maxWidth = 224
+					maxHeight = 24
+				}
+
+				# ---- Tool: auto-grow the weakest nation ----
+				guiButtonType = {
+					name = "atools_toggle_grow"
+					scripted = yes
+					position = { x = 16 y = 276 }
+					quadTextureSprite = "GFX_checkbox"
+					Orientation = "UPPER_LEFT"
+				}
+				instantTextBoxType = {
+					name = "atools_toggle_grow_label"
+					position = { x = 46 y = 279 }
+					font = "vic_18"
+					text = "ATOOLS_GROW_LABEL"
+					maxWidth = 200
+					maxHeight = 24
+				}
+				guiButtonType = {
+					name = "atools_grow_interval_cycle"
+					scripted = yes
+					position = { x = 16 y = 308 }
+					quadTextureSprite = "button_type_8"
+					buttonText = "ATOOLS_GROW_INTERVAL_CYCLE"
+					buttonFont = "vic_18"
+					Orientation = "UPPER_LEFT"
+				}
+				instantTextBoxType = {
+					name = "atools_grow_status"
+					scripted = yes
+					position = { x = 16 y = 350 }
 					font = "vic_18"
 					maxWidth = 224
 					maxHeight = 24
