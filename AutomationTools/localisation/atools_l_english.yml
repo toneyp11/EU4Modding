@@ -10,7 +10,7 @@
  atools_cede_status:0 "Interval: §Y[1.atools_cede_interval.GetValue]§! mo  |  Shrinks: §Y[1.atools_cede_count.GetValue]§!"
  ATOOLS_CEDE_STATUS_TT:0 "Current interval, and how many times the largest nation has been shrunk (released or ceded) so far this game."
  ATOOLS_CONVERT_LABEL:0 "Auto-convert religion & culture"
- ATOOLS_CONVERT_TT:0 "When §Yon§!, every §Yconvert interval§! each owned province whose religion or culture differs from its owner's has a 20%% chance to §Yconvert toward the owner§! (including same-group cases like Catholic→Orthodox that the AI never does). The map homogenises §Ygradually§! over time rather than all at once. This interval is §Yseparate§! from the shrink interval."
+ ATOOLS_CONVERT_TT:0 "When §Yon§!, every §Yconvert interval§! each owned province whose religion or culture differs from its owner's has a 20%% chance to §Yconvert toward the owner§! (including same-group cases like Catholic to Orthodox that the AI never does). The map homogenises §Ygradually§! over time rather than all at once. This interval is §Yseparate§! from the shrink interval."
  ATOOLS_CONVERT_INTERVAL_CYCLE:0 "Convert interval: click to cycle"
  ATOOLS_CONVERT_INTERVAL_CYCLE_TT:0 "Click to cycle the convert interval between §Y12§!, §Y24§!, §Y60§! and §Y120§! months. Longer = slower drift. Current value is shown below."
  atools_convert_status:0 "Convert every: §Y[1.atools_convert_interval.GetValue]§! mo"

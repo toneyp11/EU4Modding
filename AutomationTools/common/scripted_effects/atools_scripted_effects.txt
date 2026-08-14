@@ -22,11 +22,8 @@ atools_cede_effect = {
 	clr_global_flag = atools_have_top
 	clr_global_flag = atools_have_receiver
 
-	# 1) Top nation = the EXACT most-developed country (running maximum, the vanilla
-	# flavorBYZ idiom). Each candidate whose dev >= the current best overwrites it; the
-	# first candidate seeds it (no flag yet). Ties -> last one iterated wins.
-	# NOTE: subjects ARE eligible - a huge vassal can be the #1, else the most-developed
-	# nation in the world would escape anti-snowball just by being a subject.
+	# 1) Top nation = the EXACT most-developed country (running maximum). Subjects eligible
+	# (including colonial nations - they can be shrunk fine).
 	every_country = {
 		if = {
 			limit = {
@@ -42,32 +39,48 @@ atools_cede_effect = {
 
 	if = {
 		limit = { has_global_flag = atools_have_top }
+		log = "ATOOLS shrink A: top-found"
+		# DIAGNOSTIC: stamp the current #1 with a country flag (cleared from the previous
+		# one) so a save captured just before a crash names the nation we last acted on.
+		# Country flags persist in the save; we cannot log names (.GetName in a log crashes).
+		every_country = { limit = { has_country_flag = atools_last_top } clr_country_flag = atools_last_top }
+		event_target:atools_top_nation = { set_country_flag = atools_last_top }
 		event_target:atools_top_nation = {
 
-			# 2) PRIMARY shrink: carve out every nation releasable from its owned land,
-			# then free them (and any pre-existing subjects) so they end up INDEPENDENT.
-			# release_all_possible_countries releases as vassals; release_all_subjects
-			# then frees them. Snapshot total development around it: if it fell, land
-			# left the nation => a release actually happened.
+			# PRIMARY: release every releasable nation as INDEPENDENT, safely.
+			# Freeing the #1's PRE-EXISTING subjects (colonial nations / subjects tangled in
+			# alliances-PUs-coalitions) is what overflows vanilla's post-processing in the
+			# late game. So: mark those first, release the fresh nations, then free ONLY the
+			# fresh ones (static names, no ties -> shallow, safe), leaving complex subjects be.
 			export_to_variable = { which = atools_td_before value = total_development }
+			log = "ATOOLS shrink B: pre-release_all_possible"
+			every_subject_country = { set_country_flag = atools_preexisting_sub }
 			release_all_possible_countries = yes
-			release_all_subjects = yes
+			log = "ATOOLS shrink C: post-release_all_possible"
+			every_subject_country = {
+				limit = { NOT = { has_country_flag = atools_preexisting_sub } }
+				grant_independence = yes
+			}
+			log = "ATOOLS shrink D: post-free-new-only"
+			every_subject_country = { clr_country_flag = atools_preexisting_sub }
 			export_to_variable = { which = atools_td_after value = total_development }
 
 			if = {
-				# Development dropped -> the primary mechanism did the shrinking. Done.
 				limit = { NOT = { check_variable = { which = atools_td_after which = atools_td_before } } }
+				log = "ATOOLS shrink E: released-ok"
 				1 = { change_variable = { which = atools_cede_count value = 1 } }
 			}
 			else = {
-				# 3) FALLBACK: nothing was releasable -> cede a border province to the
-				# EXACT weakest neighbour (running minimum: a candidate strictly below the
-				# current best overwrites it; first candidate seeds it). Ties -> first one
-				# kept. Subjects ARE eligible recipients (own or another's vassal); a
-				# country is never its own neighbour, so it can't pick itself.
+				# FALLBACK: nothing releasable -> cede a border province to the weakest neighbour.
+				log = "ATOOLS shrink F: fallback-cede"
 				every_neighbor_country = {
 					if = {
 						limit = {
+							# Only neighbours the #1 can actually CEDE to: this neighbour must
+							# own a province bordering one of the #1's cities. Without this, the
+							# weakest neighbour by dev may share no city border, so the cede below
+							# finds no province and the #1 never shrinks (the "stuck" bug).
+							any_owned_province = { any_neighbor_province = { is_city = yes owned_by = event_target:atools_top_nation } }
 							OR = {
 								NOT = { has_global_flag = atools_have_receiver }
 								NOT = { total_development = event_target:atools_receiver }
@@ -77,7 +90,7 @@ atools_cede_effect = {
 						set_global_flag = atools_have_receiver
 					}
 				}
-
+				log = "ATOOLS shrink G: min-done"
 				if = {
 					limit = { has_global_flag = atools_have_receiver }
 					random_owned_province = {
@@ -85,14 +98,15 @@ atools_cede_effect = {
 							is_city = yes
 							any_neighbor_province = { owned_by = event_target:atools_receiver }
 						}
+						log = "ATOOLS shrink H: province-picked"
 						add_core = event_target:atools_receiver
 						cede_province = event_target:atools_receiver
-						# Only strip the giver's core if it actually had one (it may have merely
-						# OWNED, not cored, the province) - avoids "hasnt got it" error spam.
+						log = "ATOOLS shrink I: province-ceded"
 						if = { limit = { is_core = event_target:atools_top_nation } remove_core = event_target:atools_top_nation }
 						1 = { change_variable = { which = atools_cede_count value = 1 } }
 					}
 				}
+				log = "ATOOLS shrink J: fallback-done"
 			}
 		}
 	}

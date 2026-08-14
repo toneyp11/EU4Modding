@@ -33,6 +33,20 @@ while IFS= read -r f; do
   else printf "  FAIL  %s  (missing UTF-8 BOM -> file won't load)\n" "${f#"$MOD"/}"; fail=1; fi
 done < <(find "$MOD" -type f -name "*.yml" | sort)
 
+section "Localisation Latin1-safe (non-Latin1 chars break EU4 loc rendering)"
+# EU4's loc parser is Latin1: a char like U+2192 (->) errors with "Couldn't find
+# Latin1 character" and can blow up the render path. Use ASCII/Latin1 only (the color
+# code section-sign is fine). Strip the 3-byte BOM, then test each line via iconv.
+while IFS= read -r f; do
+  bad=0; ln=0
+  while IFS= read -r line; do
+    ln=$((ln+1))
+    printf '%s' "$line" | iconv -f UTF-8 -t ISO-8859-1 >/dev/null 2>&1 || {
+      echo "  FAIL  ${f#"$MOD"/}:$ln  non-Latin1 character (EU4 can't render it)"; fail=1; bad=1; }
+  done < <(tail -c +4 "$f")
+  [ "$bad" = 0 ] && printf "  OK    %s\n" "${f#"$MOD"/}"
+done < <(find "$MOD" -type f -name "*.yml" | sort)
+
 section "GUI scripted=yes  <->  custom_gui bindings"
 gui=$(grep -rB1 "scripted = yes" "$MOD/interface" 2>/dev/null | grep -oE "atools_[a-z_]+" | sort -u)
 cg=$(grep -roE "name = atools_[a-z_]+" "$MOD/common/custom_gui" 2>/dev/null | grep -oE "atools_[a-z_]+" | sort -u)
