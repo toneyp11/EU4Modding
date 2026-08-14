@@ -185,6 +185,13 @@ atools_cede_effect = {
 				# PRIMARY: release everything releasable, then free the NEW subjects only.
 				# Mark pre-existing subjects first so we can tell them apart afterwards.
 				log = "ATOOLS shrink B: pre-release_all_possible"
+				# Clear THEN set: a country that was dead when the global pre-clean ran
+				# cannot be reached by every_country, so a revived tag can come back still
+				# carrying a stale flag from a past life. (Confirmed in a save: three
+				# countries held atools_last_top at once, which is only possible via
+				# death-and-revival.) Clearing the current subjects immediately before
+				# marking them guarantees this set is exactly right.
+				every_subject_country = { clr_country_flag = atools_preexisting_sub }
 				every_subject_country = { set_country_flag = atools_preexisting_sub }
 				release_all_possible_countries = yes
 				log = "ATOOLS shrink C: post-release_all_possible"
@@ -225,6 +232,11 @@ atools_cede_effect = {
 # so the map homogenises gradually rather than all at once. change_religion /
 # change_culture accept a country scope; `owner` = the province's owner.
 atools_convert_effect = {
+	# TEMP traces: the convert pass had NO logging, so a crash during/just after a
+	# conversion sweep was indistinguishable from one during the shrink. change_culture
+	# in particular makes the engine re-derive province names (they are culture-specific),
+	# which is string building - the exact area the stack overflow lives in.
+	log = "ATOOLS convert: start"
 	every_province = {
 		limit = {
 			is_city = yes
@@ -240,4 +252,5 @@ atools_convert_effect = {
 			random = { chance = 20 change_culture = owner }
 		}
 	}
+	log = "ATOOLS convert: done"
 }
