@@ -86,8 +86,13 @@ several things per run.
   hand-roll `any_owned_province = { any_neighbor_province = { owner = { tag = … } } }`
   — it silently returns false.
 - **Province owner test**: `owned_by = event_target:X`.
-- **Global once-per-period timer**: self-refiring hidden `province_event` on
-  province 1 (`days = 30`), started once from `on_startup` behind a flag guard.
+- **Global once-per-period timer**: use the engine's **`on_monthly_pulse`** (it fires per
+  COUNTRY, so gate it with `owns = <hub province>` to get exactly one run per month), and
+  keep counters on the hub. **NEVER build a timer from an event that re-schedules ITSELF**
+  — an event fired from inside another event stores its firing context, so every tick
+  nests inside the previous one, the chain is serialised into the save, and the game dies
+  of `EXCEPTION_STACK_OVERFLOW` once it is deep enough (measured here: 1,840 levels ≈ 3,700
+  frames ≈ every 146 game years). `check-mod.sh` now fails on any self-refiring event.
 - **Guard on saved event targets with GLOBAL FLAGS, not `exists`**: `exists =
   event_target:X` returns *false here even when the target IS saved* (verified: you
   can scope into it, but `exists` says no). Set a flag when you save, check the flag.

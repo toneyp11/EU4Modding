@@ -2,26 +2,6 @@
 
 Running list of planned work and ideas, so we don't lose them. Newest context at top.
 
-## Active — the ~1590 STACK_OVERFLOW crash hunt
-- [ ] **Find the name-resolution cycle.** A 1444 game with the mod dies consistently at
-  ~1590-1591; a fresh 1590 game ran fine to 1690. EVIDENCE SO FAR:
-  - All six crash dumps overflowed at an **identical ~3702 stack frames** with
-    `ntdll RtlCreateUnicodeString` on top → a **true infinite recursion in string/name
-    building**, not deep data. (Constant depth = the stack simply ran out.)
-  - This rules out every volume theory (mass releases, subject counts, chain depth).
-  - LEADING HYPOTHESIS: a **cycle in the name-derivation links** (`overlord` /
-    `colonial_parent`). EU4 derives a subject's display name from its parent, so a loop
-    recurses forever. Our shrink is the only thing that mass-rewires those links, and the
-    stuck #1 was **Florida, a colonial nation**.
-  - CONTRADICTION still unexplained: "crashed with tools disabled" (implies the cycle is
-    baked into the save) vs "vanilla ran that same save fine" (implies it isn't). One test
-    was almost certainly confounded — autosaves rotate fast and got overwritten mid-session.
-  - NEXT: capture a pre-crash save (`precrash.eu4`, ~1585, before rotation) and run
-    `python scripts/check-save.py <save>`. It reports cycles in both graphs and, via the
-    `atools_last_top` country flag, names the nation the shrink last acted on.
-  - Decisive isolation if needed: fresh **1444** game, mod loaded, **tools never enabled**,
-    run to 1600. Crash → the passive `atools.1` timer chain. Clean → the tools' churn.
-
 ## Planned next — "Auto-grow: weakest nation" (the reverse of the shrink)
 - [ ] **Grow the world's least-developed nation each interval**, so with the shrink also
   on, development converges from both ends. Separate toggle + its own interval.
@@ -99,6 +79,20 @@ Running list of planned work and ideas, so we don't lose them. Newest context at
   block + UI toggle, per the add-a-tool recipe in docs/automationtools.md).
 
 ## Done
+- [x] **SOLVED: the ~1590 STACK_OVERFLOW.** Root cause was the mod's own global timer:
+  `atools.1` was a hidden province_event that re-scheduled ITSELF every 30 days. An event
+  fired from inside another event stores its firing context, so every tick nested inside
+  the previous one; the chain never unwound and was serialised into the save on the hub
+  province. Measured at 1590 in a 1444 game: province 1 = **5,007,426 bytes** (median
+  province 4,042) with **1,840 nested scope blocks, 511 tabs deep** -> ~2 stack frames per
+  level -> the measured **3,701-3,703 frame** overflow, every ~146 game years, regardless
+  of what the tools did. Vanilla loaded the same save fine only because it has no
+  `atools.1` defined and discarded the pending chain (which is why the vanilla A/B test
+  read as "mod required" - it was, but via the timer, not the tools).
+  FIX: the tick now runs in `on_monthly_pulse` gated with `owns = 1` (fresh scope each
+  month, nothing accumulates); the event file is empty. `check-mod.sh` now FAILS on any
+  self-refiring event so this cannot come back. Docs updated (the old idiom was
+  recommended in CLAUDE.md and the reference - both corrected).
 - [x] **Defensive hardening pass** (commit 0b06de0) — fixed a stale marker-flag leak,
   permanent country-variable pollution (`export_to_variable` with no `clear_variable` in
   EU4), and unbounded core stacking; added guards so the tools can never hand the engine a

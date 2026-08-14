@@ -1,53 +1,26 @@
 ##############################################################################
-# AutomationTools - BACKEND (framework: the global timer / dispatcher)
+# AutomationTools - events
 # ---------------------------------------------------------------------------
-# A hidden, self-refiring monthly tick on province 1 (the "hub", always exists).
-# Each tick it reads the UI<->backend contract (enable flags + interval var) and
-# dispatches to the enabled tools' scripted effects. Adding a tool = add another
-# "if enabled ... call its effect" block here (or in a dispatch effect).
-# Started once from on_startup. See docs/automationtools.md for the contract.
+# DELIBERATELY EMPTY (namespace only).
+#
+# This file used to hold `atools.1`, a hidden province_event that re-scheduled
+# ITSELF every 30 days to act as the mod's global timer. That pattern corrupts
+# the save: an event fired from inside another event stores its firing context,
+# so every tick nested inside the previous one and the chain never unwound. It
+# was serialised into the save on the hub province and grew one level per month.
+#
+# Measured in a real 1444 game at 1590: province 1 had reached 5,007,426 bytes
+# (median province: 4,042) containing 1,840 nested 'from' scope blocks, 511 tabs
+# deep. At roughly 2 stack frames per level that is ~3,680 frames - and the game
+# died with EXCEPTION_STACK_OVERFLOW at a measured 3,701-3,703 frames, every
+# ~146 game years, whatever the tools themselves were doing. Vanilla could load
+# the same save fine only because it has no `atools.1` defined and threw the
+# pending chain away.
+#
+# The tick now lives in `on_monthly_pulse` (common/on_actions/atools_on_actions.txt),
+# which the engine fires with a FRESH scope each month - nothing accumulates.
+#
+# If you ever need a delayed event here, do NOT let it re-schedule itself.
 ##############################################################################
 
 namespace = atools
-
-province_event = {
-	id = atools.1
-	title = none
-	desc = none
-	hidden = yes
-	is_triggered_only = yes
-
-	immediate = {
-		# Keep the monthly chain alive (~30 days; drifts slightly from calendar).
-		province_event = { id = atools.1 days = 30 }
-
-		# Each tool has its OWN elapsed-month counter + interval, so their cadences are
-		# independent. Bump both counters every tick; when a counter reaches its tool's
-		# interval, reset it and run that tool (if enabled).
-		change_variable = { which = atools_months value = 1 }
-		change_variable = { which = atools_convert_months value = 1 }
-
-		# Anti-shrink tool (atools_cede_interval / atools_months).
-		if = {
-			limit = {
-				check_variable = { which = atools_cede_interval value = 1 }             # interval >= 1
-				check_variable = { which = atools_months which = atools_cede_interval }  # months >= interval
-			}
-			set_variable = { which = atools_months value = 0 }
-			if = { limit = { has_global_flag = atools_cede_enabled } atools_cede_effect = yes }
-		}
-
-		# Auto-convert tool (atools_convert_interval / atools_convert_months).
-		if = {
-			limit = {
-				check_variable = { which = atools_convert_interval value = 1 }                 # interval >= 1
-				check_variable = { which = atools_convert_months which = atools_convert_interval } # months >= interval
-			}
-			set_variable = { which = atools_convert_months value = 0 }
-			if = { limit = { has_global_flag = atools_convert_enabled } atools_convert_effect = yes }
-		}
-	}
-
-	# Hidden events still require one option; never shown.
-	option = { name = atools.1.a }
-}

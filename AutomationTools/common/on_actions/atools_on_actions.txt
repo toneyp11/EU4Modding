@@ -1,8 +1,6 @@
 ##############################################################################
-# AutomationTools - BACKEND (framework: startup / state init)
+# AutomationTools - BACKEND (framework: startup / state init / global tick)
 # ---------------------------------------------------------------------------
-# Initialises the hub state and starts the global timer, once per game.
-#
 # ============================ UI <-> BACKEND CONTRACT =======================
 # The UI and backend communicate ONLY through these. Keep them stable and the
 # UI can be redesigned without touching any backend file (and vice-versa).
@@ -10,7 +8,6 @@
 # GLOBAL FLAGS
 #   atools_panel_open       UI-only   : tools panel is open (window visibility)
 #   atools_cede_enabled     UI writes / backend reads : anti-snowball tool on/off
-#                           (release possible nations first, else cede to weakest)
 #   atools_convert_enabled  UI writes / backend reads : auto-convert religion+culture on/off
 #
 # HUB VARIABLES (on province 1; UI displays via [1.<var>.GetValue])
@@ -19,24 +16,30 @@
 #   atools_convert_interval UI writes / backend reads : months between convert runs (>=1)
 #
 # BACKEND-INTERNAL (not part of the UI contract; do not touch from UI)
-#   atools_months           shrink timer's elapsed-month counter (hub var)
-#   atools_convert_months   convert timer's elapsed-month counter (hub var)
-#   atools_timer_started    guard so the timer chain starts only once
-#   atools_have_top / atools_have_receiver : per-run guards inside the cede effect
-#   atools_td_before / atools_td_after : top nation's dev snapshot (release detection)
+#   atools_months           shrink tick's elapsed-month counter (hub var)
+#   atools_convert_months   convert tick's elapsed-month counter (hub var)
+#   atools_have_top / atools_have_receiver : per-run guards inside the shrink effect
 #   event targets: atools_top_nation, atools_receiver
 # ===========================================================================
+#
+# !! WHY THERE IS NO SELF-REFIRING TIMER EVENT ANY MORE !!
+# The tick used to be a hidden province_event (atools.1) that re-scheduled ITSELF
+# every 30 days. That is a save-corrupting trap: an event fired from inside another
+# event stores its firing context, so each tick nested inside the previous one. The
+# chain never unwinds - it grew one level per month and was serialised into the save
+# on the hub province. Measured in a real 1444 game at 1590: province 1 had ballooned
+# to 5,007,426 bytes (median province: 4,042) holding 1,840 nested 'from' scope blocks,
+# 511 tabs deep. At ~2 stack frames per level that is ~3,680 frames, and the game
+# died with EXCEPTION_STACK_OVERFLOW at a measured 3,701-3,703 frames - reproducibly,
+# every ~146 game years, regardless of what the tools themselves did.
+# Use the engine's own periodic hook instead; it starts a FRESH scope each month.
 ##############################################################################
 
-# Start the monthly timer exactly once. on_startup fires on new games AND every
-# save load, so the flag guard prevents duplicate timer chains (pending delayed
-# events persist in the save, so the chain itself survives reloads).
 on_startup = {
-	# SELF-HEAL (runs on every load, before the once-only block): make sure each
-	# interval is a sane value >= 1. A missing or zero interval silently disables its
-	# tool forever - which is what happens to a save made by an older version of the
-	# mod that never had that variable. Repairing it here keeps old saves working and
-	# means a tool can never be permanently stuck "off" because of bad data.
+	# SELF-HEAL (runs on every load): make sure each interval is a sane value >= 1.
+	# A missing or zero interval silently disables its tool forever - which is what
+	# happens to a save made by an older version of the mod that never had that
+	# variable. Repairing here keeps old saves working.
 	1 = {
 		if = {
 			limit = { NOT = { check_variable = { which = atools_cede_interval value = 1 } } }
@@ -48,6 +51,7 @@ on_startup = {
 		}
 	}
 
+	# One-time state init.
 	if = {
 		limit = { NOT = { has_global_flag = atools_timer_started } }
 		set_global_flag = atools_timer_started
@@ -55,7 +59,42 @@ on_startup = {
 			set_variable = { which = atools_months value = 0 }
 			set_variable = { which = atools_cede_count value = 0 }
 			set_variable = { which = atools_convert_months value = 0 }
-			province_event = { id = atools.1 days = 30 }
+		}
+	}
+}
+
+# Global monthly tick. on_monthly_pulse fires once per COUNTRY per month, so gate it
+# to the single country that owns the hub province -> exactly one execution per month,
+# with a fresh scope each time (no event nesting, nothing accumulated in the save).
+on_monthly_pulse = {
+	if = {
+		limit = { owns = 1 }
+		1 = {
+			# Each tool has its OWN elapsed-month counter + interval, so their cadences
+			# are independent. Bump both counters; when a counter reaches its tool's
+			# interval, reset it and run that tool (if enabled).
+			change_variable = { which = atools_months value = 1 }
+			change_variable = { which = atools_convert_months value = 1 }
+
+			# Anti-snowball shrink tool.
+			if = {
+				limit = {
+					check_variable = { which = atools_cede_interval value = 1 }              # interval >= 1
+					check_variable = { which = atools_months which = atools_cede_interval }   # months >= interval
+				}
+				set_variable = { which = atools_months value = 0 }
+				if = { limit = { has_global_flag = atools_cede_enabled } atools_cede_effect = yes }
+			}
+
+			# Auto-convert religion & culture tool.
+			if = {
+				limit = {
+					check_variable = { which = atools_convert_interval value = 1 }
+					check_variable = { which = atools_convert_months which = atools_convert_interval }
+				}
+				set_variable = { which = atools_convert_months value = 0 }
+				if = { limit = { has_global_flag = atools_convert_enabled } atools_convert_effect = yes }
+			}
 		}
 	}
 }

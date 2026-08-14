@@ -96,6 +96,25 @@ if [ -n "$prevhits" ]; then
   echo "$prevhits" | sed 's/^/          /'; warn=1
 else echo "  OK    no '= PREV' comparisons in code"; fi
 
+section "Self-refiring event chains (save-corrupting stack overflow)"
+# An event that re-schedules ITSELF stores its firing context each time, so every tick
+# nests inside the previous one. The chain is serialised into the save and grows one
+# level per firing; at ~2 stack frames per level the game dies with a
+# EXCEPTION_STACK_OVERFLOW (measured: 1,840 levels -> ~3,700 frames -> crash).
+# Use on_monthly_pulse / on_yearly_pulse instead - the engine starts a fresh scope.
+selfref=""
+while IFS= read -r f; do
+  # For every event id defined in this file, does the same file schedule that same id?
+  while IFS= read -r id; do
+    [ -z "$id" ] && continue
+    if grep -qE "(province_event|country_event) = \{ *id = ${id//./\\.}\b" "$f" 2>/dev/null; then
+      selfref="$selfref\n          ${f#"$MOD"/}: event $id re-schedules itself"
+    fi
+  done < <(grep -hoE "^[[:space:]]*id = atools\.[0-9]+" "$f" 2>/dev/null | grep -oE "atools\.[0-9]+")
+done < <(find "$MOD/events" -type f -name "*.txt" 2>/dev/null | sort)
+if [ -z "$selfref" ]; then echo "  OK    no event re-schedules itself"
+else echo "  FAIL  self-refiring event chain (nests in the save until it overflows the stack):"; printf "%b\n" "$selfref"; fail=1; fi
+
 section "Compatibility (must stay usable alongside other mods)"
 # (a) Hard-coded province scopes: only province 1 (the documented hub) is sanctioned.
 #     Any other `<n> = {` is map-specific and breaks on mods that renumber provinces.

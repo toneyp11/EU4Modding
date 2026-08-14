@@ -149,34 +149,47 @@ a scope variable. Verified value tokens include `total_development` (11 vanilla 
 `total_development`. Exact equality holds when nothing changed, so the `>=` compare is a
 reliable "did nothing happen" test even though dev can be fractional.
 
-### Global once-per-period timer
-Per-country pulses (`on_monthly_pulse`) fire once *per country*. For a single global
-tick, use a self-refiring hidden event on a permanent scope (province 1 = Stockholm,
-always exists), started once from `on_startup` behind a flag:
+### Global once-per-period timer — NEVER self-refire an event
+**This caused the worst bug in this project.** Do not build a timer from an event that
+re-schedules itself:
 ```
-# on_actions:
-on_startup = {
-    if = {
-        limit = { NOT = { has_global_flag = atools_timer_started } }
-        set_global_flag = atools_timer_started
-        1 = { set_variable = { which = atools_months value = 0 }
-              province_event = { id = atools.1 days = 30 } }
-    }
-}
-# event (hidden, is_triggered_only):
+# BROKEN - do not do this:
 province_event = {
     id = atools.1
-    title = none  desc = none  hidden = yes  is_triggered_only = yes
-    immediate = {
-        province_event = { id = atools.1 days = 30 }   # re-arm (survives save/load)
-        change_variable = { which = atools_months value = 1 }
-        ...
-    }
-    option = { name = atools.1.a }   # hidden events still want one option (silences a warning)
+    hidden = yes  is_triggered_only = yes
+    immediate = { province_event = { id = atools.1 days = 30 } ... }   # re-arms ITSELF
 }
 ```
-`days = 30` ≈ monthly (drifts slightly vs calendar). Pending delayed events are saved
-with the game, so the chain survives reloads — hence the flag guard against duplicates.
+An event fired from **inside another event** stores its firing context, so each tick
+**nests inside the previous one** and the chain never unwinds. It is serialised into the
+save on whatever scope it runs on, growing one level per firing.
+
+Measured in a real 1444 game at 1590: the hub province had reached **5,007,426 bytes**
+(median province: **4,042**) holding **1,840 nested scope blocks, 511 tabs deep**. At
+roughly 2 stack frames per level that is ~3,680 frames — and the game died with
+`EXCEPTION_STACK_OVERFLOW` at a measured **3,701-3,703 frames**, reproducibly, about
+every **146 game years**, no matter what the mod's own logic was doing at the time.
+Diagnostic tells: the frame count is *constant* across crashes (stack exhaustion, not
+data), and **vanilla loads the same save fine** — only because vanilla has no such event
+defined and discards the pending chain.
+
+**Correct pattern** — use the engine's periodic hook, which starts a FRESH scope each
+time. `on_monthly_pulse` fires once *per country*, so gate it to a single country to get
+exactly one global run per month:
+```
+on_monthly_pulse = {
+    if = {
+        limit = { owns = 1 }          # only the country owning the hub province
+        1 = {
+            change_variable = { which = atools_months value = 1 }
+            ...
+        }
+    }
+}
+```
+Other hooks: `on_yearly_pulse`, `on_bi_yearly_pulse`, `on_thri_yearly_pulse`,
+`on_four_year_pulse`, `on_five_year_pulse`. `check-mod.sh` now fails the build if any
+event schedules its own id.
 
 ### Variables & the hub
 Variables attach to a scope. We keep global counters on **province 1** as the "hub":
