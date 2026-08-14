@@ -22,6 +22,40 @@ Running list of planned work and ideas, so we don't lose them. Newest context at
   - Decisive isolation if needed: fresh **1444** game, mod loaded, **tools never enabled**,
     run to 1600. Crash → the passive `atools.1` timer chain. Clean → the tools' churn.
 
+## Planned next — "Auto-grow: weakest nation" (the reverse of the shrink)
+- [ ] **Grow the world's least-developed nation each interval**, so with the shrink also
+  on, development converges from both ends. Separate toggle + its own interval.
+  ORDER OF PREFERENCE: (1) **claim an adjacent uncolonized province outright**, (2) else
+  **take a border province from its strongest neighbour**.
+  - PRIMITIVES (all verified in vanilla): `random_empty_neighbor_province` (11 uses) with
+    the matching trigger `any_empty_neighbor_province` (9); `create_colony = 1000` — 1000
+    is the colony->city threshold, so it settles the province INSTANTLY as a full owned
+    province, no colony phase (exact vanilla idiom in PropagateReligionEvents.txt:1033).
+    Also `is_wasteland` (44) to exclude wastelands, `had_province_flag = { flag days }` (9)
+    for a transfer cooldown.
+  - STRUCTURE: `atools_grow_effect` (exact running MINIMUM over `every_country`, same
+    flag-seeded idiom as the shrink's maximum; stamps `atools_last_weakest` for diagnosis)
+    -> claim branch, else `atools_grow_take_effect` (exact running MAXIMUM over
+    `every_neighbor_country` for the donor). "Move a border province from A to B" is now
+    used by both tools, so factor it into a shared `atools_transfer_province_effect`.
+  - GUARDS (every lesson so far): donor eligibility trigger kept CHARACTER-IDENTICAL to
+    the transfer's own limit (`is_city = yes`, `is_capital = no`, borders the weakest) -
+    the mismatch bug has bitten twice; donor must keep >= 2 cities; never take a capital;
+    province cooldown flag respected by BOTH tools so shrink and grow cannot ping-pong the
+    same border province; engine primitives only (no hard-coded ids) for compatibility.
+  - CONTRACT: flag `atools_grow_enabled`; hub vars `atools_grow_interval` /
+    `atools_grow_months` / `atools_grow_count`; panel toggle + interval cycle + status.
+  - SPIKE FIRST (the one real unknown): **who does `create_colony` colonise FOR?** Vanilla
+    only calls it from a country event (ROOT = the coloniser); ours runs from a province
+    event (ROOT = province 1), so verify that nesting it as
+    `event_target:atools_weakest = { <province> = { create_colony = 1000 } }` attributes
+    the province correctly. Fallback route if not: `add_core` + `cede_province` on the
+    empty province.
+  - EXPECTATION: the claim branch rarely fires in the Old World (no empty provinces left),
+    so the take branch dominates outside frontier regions.
+  - The panel would reach 4 tools -> do the deferred panel-polish (two-column layout)
+    as part of this rather than stacking another row.
+
 ## Compatibility (STANDING PRIORITY — user runs this with other mods)
 - [x] **Audit done** — backend logic is fully map-agnostic; only province 1 (hub) is
   hard-coded, no area/region names, no un-prefixed loc keys, provinceview.gui is purely
