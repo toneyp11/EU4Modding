@@ -127,44 +127,32 @@ atools_shrink_cede_effect = {
 				remove_core = event_target:atools_top_nation
 			}
 			1 = { change_variable = { which = atools_cede_count value = 1 } }
+			set_global_flag = atools_shrink_done      # this attempt actually shrank someone
 		}
 	}
 	log = "ATOOLS shrink J: fallback-done"
 }
 
-# === Tool: Auto-shrink the #1 nation (anti-snowball) ========================
-# Each run the most-developed nation is shrunk: it first releases every nation it
-# can as INDEPENDENT states; if nothing was releasable it instead cedes one border
-# province to its weakest neighbour. Called from the atools.1 timer when enabled.
-atools_cede_effect = {
+# --- One shrink ATTEMPT: pick the biggest not-yet-skipped nation and try to shrink it.
+# Sets atools_shrink_done on success; on failure it flags that nation so the next attempt
+# moves on. EU4 has NO "can this nation be released?" trigger (has_releasable_nation /
+# can_release_nation / num_of_released_nations do not exist), so the only way to know
+# whether a nation can be shrunk is to try.
+atools_shrink_attempt_effect = {
 	clr_global_flag = atools_have_top
 	clr_global_flag = atools_have_receiver
 
-	# --- Pre-clean marker flags GLOBALLY -------------------------------------
-	# These flags are per-run scratch. Clearing them only from the current #1's
-	# subjects (as we used to) LEAKED: a country flagged in one run that stopped
-	# being a subject kept the flag forever. Because EU4 recycles tags (released ->
-	# annexed -> released again), a freshly released nation could inherit a stale
-	# flag from a past life, be misread as "pre-existing", and never be freed - so
-	# the #1 kept it as a vassal and visibly stopped shrinking.
-	every_country = { limit = { has_country_flag = atools_preexisting_sub } clr_country_flag = atools_preexisting_sub }
-	every_country = { limit = { has_country_flag = atools_last_top } clr_country_flag = atools_last_top }
-
-	# 1) Top nation = the EXACT most-developed country (running maximum; the first
-	# candidate seeds it, then anything >= replaces it). Subjects ARE eligible,
-	# including colonial nations - they shrink fine. Requires >= 2 cities so a cede
-	# can never wipe a nation off the map (that would strand references to it).
+	# Top nation = the EXACT most-developed country (running maximum; first candidate
+	# seeds it, then anything >= replaces it). Subjects and colonial nations are eligible.
+	# Requires >= 2 cities so a cede can never wipe a nation off the map.
+	# NOTE: deliberately NO "must have a neighbour" filter. An island nation (Britain,
+	# Japan) has no land or strait neighbour but can still be shrunk by RELEASING nations
+	# from inside itself; filtering on neighbours skipped those before they got the chance.
 	every_country = {
 		if = {
 			limit = {
 				num_of_cities = 2
-				# Must border SOMEONE. Ceding is our only guaranteed shrink mechanism, and
-				# it needs a recipient country. A nation with no country neighbours (e.g. a
-				# colonial nation ringed entirely by uncolonized land, which is common in
-				# the 1590 Americas) can never be shrunk - and because it stays the #1 by
-				# development, the tool wedges on it permanently, doing nothing every month.
-				# Skipping it lets the tool move on to the next-largest nation.
-				any_neighbor_country = { always = yes }
+				NOT = { has_country_flag = atools_skip_top }
 				OR = {
 					NOT = { has_global_flag = atools_have_top }
 					total_development = event_target:atools_top_nation
@@ -179,44 +167,33 @@ atools_cede_effect = {
 		limit = { has_global_flag = atools_have_top }
 		log = "ATOOLS shrink A: top-found"
 		event_target:atools_top_nation = {
-			# DIAGNOSTIC: stamp the current #1 so a save captured before a crash names
-			# the nation we last acted on (we cannot log names - .GetName in a log crashes).
+			# DIAGNOSTIC: stamp the current #1 so a save captured before a crash names the
+			# nation we last acted on (.GetName in a log is itself a crash, so we cannot log it).
 			set_country_flag = atools_last_top
 
 			if = {
-				# A colonial nation shrinks by CEDING only. Releasing from one would make
-				# it the overlord of its own vassals while it is itself a subject of its
-				# colonial parent - an abnormal nesting the engine never builds on its own,
-				# and exactly the kind of tangled parentage a name cycle needs.
+				# A colonial nation shrinks by CEDING only. Releasing from one would make it the
+				# overlord of its own vassals while it is itself a subject of its colonial parent.
 				limit = { is_colonial_nation = yes }
 				log = "ATOOLS shrink K: colonial-top-cede-only"
 				atools_shrink_cede_effect = yes
 			}
 			else = {
 				# PRIMARY: release everything releasable, then free the NEW subjects only.
-				# Mark pre-existing subjects first so we can tell them apart afterwards.
+				# This needs no neighbour, so it works for island nations.
 				log = "ATOOLS shrink B: pre-release_all_possible"
-				# Clear THEN set: a country that was dead when the global pre-clean ran
-				# cannot be reached by every_country, so a revived tag can come back still
-				# carrying a stale flag from a past life. (Confirmed in a save: three
-				# countries held atools_last_top at once, which is only possible via
-				# death-and-revival.) Clearing the current subjects immediately before
-				# marking them guarantees this set is exactly right.
+				# Clear THEN set: a country dead at global pre-clean time cannot be reached by
+				# every_country, so a revived tag can return carrying a stale flag from a past life.
 				every_subject_country = { clr_country_flag = atools_preexisting_sub }
 				every_subject_country = { set_country_flag = atools_preexisting_sub }
 				release_all_possible_countries = yes
 				log = "ATOOLS shrink C: post-release_all_possible"
 
 				if = {
-					# Did the release actually create anything? Ask the subject list directly
-					# instead of snapshotting total_development into country variables -
-					# export_to_variable wrote atools_td_before/after onto EVERY nation that
-					# was ever #1, and EU4 has no clear_variable, so that bloated the save
-					# permanently. A trigger costs nothing and leaves no residue.
+					# Did the release create anything? Ask the subject list directly rather than
+					# snapshotting development into country variables (EU4 has no clear_variable,
+					# so those persist in the save forever).
 					limit = { any_subject_country = { NOT = { has_country_flag = atools_preexisting_sub } } }
-					# Free the newly-released nations to full independence. Colonial nations
-					# are skipped: their names are engine-derived from their parent, and
-					# force-freeing one is exactly the degenerate state that recurses.
 					every_subject_country = {
 						limit = {
 							NOT = { has_country_flag = atools_preexisting_sub }
@@ -226,14 +203,43 @@ atools_cede_effect = {
 					}
 					log = "ATOOLS shrink E: released-ok"
 					1 = { change_variable = { which = atools_cede_count value = 1 } }
+					set_global_flag = atools_shrink_done
 				}
 				else = { atools_shrink_cede_effect = yes }
 			}
 		}
-	}
 
-	# --- Post-clean the scratch flag so nothing survives this run ------------
+		# Nothing worked on this nation - nothing releasable AND nobody to cede to (a fully
+		# cored island, or a colonial nation ringed by uncolonized land). Flag it so the next
+		# attempt targets the next-largest instead of wedging here forever.
+		if = {
+			limit = { NOT = { has_global_flag = atools_shrink_done } }
+			log = "ATOOLS shrink S: un-shrinkable, skipping to next"
+			event_target:atools_top_nation = { set_country_flag = atools_skip_top }
+		}
+	}
+}
+
+# === Tool: Auto-shrink the #1 nation (anti-snowball) ========================
+# Each run the most-developed nation is shrunk: it first releases every nation it can as
+# INDEPENDENT states; if nothing was releasable it cedes one border province to its
+# weakest neighbour. A nation that can do neither is skipped and the next-largest is
+# tried (EU4 has no loops, so the retry is unrolled). Called from on_monthly_pulse.
+atools_cede_effect = {
+	clr_global_flag = atools_shrink_done
+
+	# Per-run scratch flags - clear globally first (see the revived-tag note above).
 	every_country = { limit = { has_country_flag = atools_preexisting_sub } clr_country_flag = atools_preexisting_sub }
+	every_country = { limit = { has_country_flag = atools_last_top } clr_country_flag = atools_last_top }
+	every_country = { limit = { has_country_flag = atools_skip_top } clr_country_flag = atools_skip_top }
+
+	atools_shrink_attempt_effect = yes
+	if = { limit = { NOT = { has_global_flag = atools_shrink_done } } atools_shrink_attempt_effect = yes }
+	if = { limit = { NOT = { has_global_flag = atools_shrink_done } } atools_shrink_attempt_effect = yes }
+
+	# Post-clean so nothing survives this run.
+	every_country = { limit = { has_country_flag = atools_preexisting_sub } clr_country_flag = atools_preexisting_sub }
+	every_country = { limit = { has_country_flag = atools_skip_top } clr_country_flag = atools_skip_top }
 }
 
 # === Tool: Auto-convert religion & culture ==================================
