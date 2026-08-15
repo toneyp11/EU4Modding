@@ -33,6 +33,20 @@ while IFS= read -r f; do
   else printf "  FAIL  %s  (missing UTF-8 BOM -> file won't load)\n" "${f#"$MOD"/}"; fail=1; fi
 done < <(find "$MOD" -type f -name "*.yml" | sort)
 
+section "Localisation Latin1-safe (non-Latin1 chars break EU4 loc rendering)"
+# EU4's loc parser is Latin1: a char like U+2192 (->) errors with "Couldn't find
+# Latin1 character" and can blow up the render path. Use ASCII/Latin1 only (the color
+# code section-sign is fine). Strip the 3-byte BOM, then test each line via iconv.
+while IFS= read -r f; do
+  bad=0; ln=0
+  while IFS= read -r line; do
+    ln=$((ln+1))
+    printf '%s' "$line" | iconv -f UTF-8 -t ISO-8859-1 >/dev/null 2>&1 || {
+      echo "  FAIL  ${f#"$MOD"/}:$ln  non-Latin1 character (EU4 can't render it)"; fail=1; bad=1; }
+  done < <(tail -c +4 "$f")
+  [ "$bad" = 0 ] && printf "  OK    %s\n" "${f#"$MOD"/}"
+done < <(find "$MOD" -type f -name "*.yml" | sort)
+
 section "GUI scripted=yes  <->  custom_gui bindings"
 gui=$(grep -rB1 "scripted = yes" "$MOD/interface" 2>/dev/null | grep -oE "atools_[a-z_]+" | sort -u)
 cg=$(grep -roE "name = atools_[a-z_]+" "$MOD/common/custom_gui" 2>/dev/null | grep -oE "atools_[a-z_]+" | sort -u)
@@ -81,6 +95,25 @@ if [ -n "$prevhits" ]; then
   echo "  warn  '= PREV' comparison found (often doesn't resolve; prefer event_target):"
   echo "$prevhits" | sed 's/^/          /'; warn=1
 else echo "  OK    no '= PREV' comparisons in code"; fi
+
+section "Self-refiring event chains (save-corrupting stack overflow)"
+# An event that re-schedules ITSELF stores its firing context each time, so every tick
+# nests inside the previous one. The chain is serialised into the save and grows one
+# level per firing; at ~2 stack frames per level the game dies with a
+# EXCEPTION_STACK_OVERFLOW (measured: 1,840 levels -> ~3,700 frames -> crash).
+# Use on_monthly_pulse / on_yearly_pulse instead - the engine starts a fresh scope.
+selfref=""
+while IFS= read -r f; do
+  # For every event id defined in this file, does the same file schedule that same id?
+  while IFS= read -r id; do
+    [ -z "$id" ] && continue
+    if grep -qE "(province_event|country_event) = \{ *id = ${id//./\\.}\b" "$f" 2>/dev/null; then
+      selfref="$selfref\n          ${f#"$MOD"/}: event $id re-schedules itself"
+    fi
+  done < <(grep -hoE "^[[:space:]]*id = atools\.[0-9]+" "$f" 2>/dev/null | grep -oE "atools\.[0-9]+")
+done < <(find "$MOD/events" -type f -name "*.txt" 2>/dev/null | sort)
+if [ -z "$selfref" ]; then echo "  OK    no event re-schedules itself"
+else echo "  FAIL  self-refiring event chain (nests in the save until it overflows the stack):"; printf "%b\n" "$selfref"; fail=1; fi
 
 section "Compatibility (must stay usable alongside other mods)"
 # (a) Hard-coded province scopes: only province 1 (the documented hub) is sanctioned.

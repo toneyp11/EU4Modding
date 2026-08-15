@@ -149,34 +149,47 @@ a scope variable. Verified value tokens include `total_development` (11 vanilla 
 `total_development`. Exact equality holds when nothing changed, so the `>=` compare is a
 reliable "did nothing happen" test even though dev can be fractional.
 
-### Global once-per-period timer
-Per-country pulses (`on_monthly_pulse`) fire once *per country*. For a single global
-tick, use a self-refiring hidden event on a permanent scope (province 1 = Stockholm,
-always exists), started once from `on_startup` behind a flag:
+### Global once-per-period timer — NEVER self-refire an event
+**This caused the worst bug in this project.** Do not build a timer from an event that
+re-schedules itself:
 ```
-# on_actions:
-on_startup = {
-    if = {
-        limit = { NOT = { has_global_flag = atools_timer_started } }
-        set_global_flag = atools_timer_started
-        1 = { set_variable = { which = atools_months value = 0 }
-              province_event = { id = atools.1 days = 30 } }
-    }
-}
-# event (hidden, is_triggered_only):
+# BROKEN - do not do this:
 province_event = {
     id = atools.1
-    title = none  desc = none  hidden = yes  is_triggered_only = yes
-    immediate = {
-        province_event = { id = atools.1 days = 30 }   # re-arm (survives save/load)
-        change_variable = { which = atools_months value = 1 }
-        ...
-    }
-    option = { name = atools.1.a }   # hidden events still want one option (silences a warning)
+    hidden = yes  is_triggered_only = yes
+    immediate = { province_event = { id = atools.1 days = 30 } ... }   # re-arms ITSELF
 }
 ```
-`days = 30` ≈ monthly (drifts slightly vs calendar). Pending delayed events are saved
-with the game, so the chain survives reloads — hence the flag guard against duplicates.
+An event fired from **inside another event** stores its firing context, so each tick
+**nests inside the previous one** and the chain never unwinds. It is serialised into the
+save on whatever scope it runs on, growing one level per firing.
+
+Measured in a real 1444 game at 1590: the hub province had reached **5,007,426 bytes**
+(median province: **4,042**) holding **1,840 nested scope blocks, 511 tabs deep**. At
+roughly 2 stack frames per level that is ~3,680 frames — and the game died with
+`EXCEPTION_STACK_OVERFLOW` at a measured **3,701-3,703 frames**, reproducibly, about
+every **146 game years**, no matter what the mod's own logic was doing at the time.
+Diagnostic tells: the frame count is *constant* across crashes (stack exhaustion, not
+data), and **vanilla loads the same save fine** — only because vanilla has no such event
+defined and discards the pending chain.
+
+**Correct pattern** — use the engine's periodic hook, which starts a FRESH scope each
+time. `on_monthly_pulse` fires once *per country*, so gate it to a single country to get
+exactly one global run per month:
+```
+on_monthly_pulse = {
+    if = {
+        limit = { owns = 1 }          # only the country owning the hub province
+        1 = {
+            change_variable = { which = atools_months value = 1 }
+            ...
+        }
+    }
+}
+```
+Other hooks: `on_yearly_pulse`, `on_bi_yearly_pulse`, `on_thri_yearly_pulse`,
+`on_four_year_pulse`, `on_five_year_pulse`. `check-mod.sh` now fails the build if any
+event schedules its own id.
 
 ### Variables & the hub
 Variables attach to a scope. We keep global counters on **province 1** as the "hub":
@@ -207,6 +220,18 @@ Variables attach to a scope. We keep global counters on **province 1** as the "h
 | `.yml` changes don't show | missing BOM | write UTF-8 with BOM |
 | GUI changes don't apply without restart | modded-GUI hot-reload is unreliable | restart; there is no good workaround |
 | Tool never targets / never gives to a vassal | `is_subject = no` on the candidate/recipient finder silently excludes ALL subjects — a huge vassal can't be picked as #1, and no one can cede to any vassal | drop `is_subject = no` if subjects should be eligible; empty `{}` limit → use `always = yes` |
+| Loop body never runs (a log ABOVE the loop fires, nothing inside does) | a trigger in the `limit` is invalid **for that scope** and silently returns false, so the limit is false for everything. Seen: `capital_scope = { exists = yes }` — `exists` is a COUNTRY trigger, meaningless in a province scope | use a scope-appropriate trigger (`num_of_cities = 1`). Put traces INSIDE the loop, not just above it |
+| Effect picks a target then does nothing, every run forever ("stuck") | **eligibility test and action filter disagree.** We picked the weakest neighbour bordering *any* of the giver's cities, but only ceded *non-capital* provinces — so a small nation whose only bordering province was its capital chose a receiver it could never hand anything to. This bit us twice (first with no border test at all, then with the capital mismatch) | keep the "can I actually do this?" trigger **in exact sync** with the action's own `limit`; add a last-resort relaxation so the effect can never wedge on one target |
+
+**Known VANILLA crash (not ours):** `EXCEPTION_STACK_OVERFLOW` during observer play with
+error.log spam of `Undefined event target: claims_province` and the loc `Too long has
+[claims_province.Owner.GetUsableName] threatened our borders! … claim on
+[claims_province.GetName]!`. Cause: vanilla's "historical claim" random event
+(`events/RandomEvents.txt` + `generic_events_l_english.yml`) renders with
+`claims_province` unset, and vanilla's `[…GetUsableName]` recurses on the undefined
+scope. We don't touch claims/that event/loc — confirmed not our code. Do NOT patch it
+(would require overriding a vanilla loc key / event file → breaks mod compatibility).
+Intermittent; reload and continue. Our heavy map mutation may raise its frequency.
 
 **Vanilla log noise to ignore** (not mod bugs): `Synthetics has no primary culture/
 religion` (hidden Synthetic Dawn tag), `AST … no default sub-unit` (Astrakhan),

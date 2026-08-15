@@ -1,8 +1,6 @@
 ##############################################################################
-# AutomationTools - BACKEND (framework: startup / state init)
+# AutomationTools - BACKEND (framework: startup / state init / global tick)
 # ---------------------------------------------------------------------------
-# Initialises the hub state and starts the global timer, once per game.
-#
 # ============================ UI <-> BACKEND CONTRACT =======================
 # The UI and backend communicate ONLY through these. Keep them stable and the
 # UI can be redesigned without touching any backend file (and vice-versa).
@@ -10,38 +8,252 @@
 # GLOBAL FLAGS
 #   atools_panel_open       UI-only   : tools panel is open (window visibility)
 #   atools_cede_enabled     UI writes / backend reads : anti-snowball tool on/off
-#                           (release possible nations first, else cede to weakest)
 #   atools_convert_enabled  UI writes / backend reads : auto-convert religion+culture on/off
+#   atools_grow_enabled     UI writes / backend reads : auto-grow weakest nation on/off
+#   atools_absorb_enabled   UI writes / backend reads : absorb-exclaves tool on/off
+#   atools_ticker (country flag) : fallback tick driver when nobody owns the hub
 #
 # HUB VARIABLES (on province 1; UI displays via [1.<var>.GetValue])
 #   atools_cede_interval    UI writes / backend reads : months between shrink runs (>=1)
 #   atools_cede_count       backend writes / UI reads : total shrinks this game
+#   atools_cede_fail_count  backend writes / UI reads : shrink runs that did nothing
 #   atools_convert_interval UI writes / backend reads : months between convert runs (>=1)
+#   atools_grow_interval    UI writes / backend reads : months between grow runs (>=1)
+#   atools_grow_count       backend writes / UI reads : total grows this game
+#   atools_grow_fail_count  backend writes / UI reads : grow runs that did nothing
+#   atools_absorb_interval  UI writes / backend reads : months between absorb runs (>=1)
+#   atools_absorb_count     backend writes / UI reads : total exclaves absorbed this game
 #
 # BACKEND-INTERNAL (not part of the UI contract; do not touch from UI)
-#   atools_months           shrink timer's elapsed-month counter (hub var)
-#   atools_convert_months   convert timer's elapsed-month counter (hub var)
-#   atools_timer_started    guard so the timer chain starts only once
-#   atools_have_top / atools_have_receiver : per-run guards inside the cede effect
-#   atools_td_before / atools_td_after : top nation's dev snapshot (release detection)
+#   atools_months           shrink tick's elapsed-month counter (hub var)
+#   atools_convert_months   convert tick's elapsed-month counter (hub var)
+#   atools_grow_months      grow tick's elapsed-month counter (hub var)
+#   atools_absorb_months    absorb tick's elapsed-month counter (hub var)
+#   atools_have_top / atools_have_receiver : per-run guards inside the shrink effect
 #   event targets: atools_top_nation, atools_receiver
 # ===========================================================================
+#
+# !! WHY THERE IS NO SELF-REFIRING TIMER EVENT ANY MORE !!
+# The tick used to be a hidden province_event (atools.1) that re-scheduled ITSELF
+# every 30 days. That is a save-corrupting trap: an event fired from inside another
+# event stores its firing context, so each tick nested inside the previous one. The
+# chain never unwinds - it grew one level per month and was serialised into the save
+# on the hub province. Measured in a real 1444 game at 1590: province 1 had ballooned
+# to 5,007,426 bytes (median province: 4,042) holding 1,840 nested 'from' scope blocks,
+# 511 tabs deep. At ~2 stack frames per level that is ~3,680 frames, and the game
+# died with EXCEPTION_STACK_OVERFLOW at a measured 3,701-3,703 frames - reproducibly,
+# every ~146 game years, regardless of what the tools themselves did.
+# Use the engine's own periodic hook instead; it starts a FRESH scope each month.
 ##############################################################################
 
-# Start the monthly timer exactly once. on_startup fires on new games AND every
-# save load, so the flag guard prevents duplicate timer chains (pending delayed
-# events persist in the save, so the chain itself survives reloads).
 on_startup = {
+	# SELF-HEAL (runs on every load): make sure each interval is a sane value >= 1.
+	# A missing or zero interval silently disables its tool forever - which is what
+	# happens to a save made by an older version of the mod that never had that
+	# variable. Repairing here keeps old saves working.
+	1 = {
+		if = {
+			limit = { NOT = { check_variable = { which = atools_cede_interval value = 1 } } }
+			set_variable = { which = atools_cede_interval value = 12 }       # shrink: every 12 months
+		}
+		if = {
+			limit = { NOT = { check_variable = { which = atools_convert_interval value = 1 } } }
+			set_variable = { which = atools_convert_interval value = 60 }    # convert: every 60 months (5 yr)
+		}
+		if = {
+			limit = { NOT = { check_variable = { which = atools_grow_interval value = 1 } } }
+			set_variable = { which = atools_grow_interval value = 12 }       # grow: every 12 months
+		}
+		if = {
+			limit = { NOT = { check_variable = { which = atools_absorb_interval value = 1 } } }
+			set_variable = { which = atools_absorb_interval value = 12 }     # absorb: every 12 months
+		}
+	}
+
+	# COMPATIBILITY: the monthly tick below is normally driven by whoever owns the hub
+	# province. On a total-conversion map that province may be uncolonised, wasteland or
+	# sea - nobody owns it, the gate never passes and the whole mod silently does nothing.
+	# In that case nominate a 'ticker' country instead so the tick still runs.
+	if = {
+		limit = { NOT = { any_country = { owns = 1 } } }
+		random_country = {
+			limit = { num_of_cities = 1 }
+			set_country_flag = atools_ticker
+		}
+	}
+
+	# One-time state init.
 	if = {
 		limit = { NOT = { has_global_flag = atools_timer_started } }
 		set_global_flag = atools_timer_started
 		1 = {
 			set_variable = { which = atools_months value = 0 }
-			set_variable = { which = atools_cede_interval value = 12 }      # default: shrink every 12 months
 			set_variable = { which = atools_cede_count value = 0 }
 			set_variable = { which = atools_convert_months value = 0 }
-			set_variable = { which = atools_convert_interval value = 60 }   # default: convert every 60 months (5 yr) - slow drift
-			province_event = { id = atools.1 days = 30 }
+			set_variable = { which = atools_grow_months value = 0 }
+			set_variable = { which = atools_grow_count value = 0 }
+			set_variable = { which = atools_absorb_months value = 0 }
+			set_variable = { which = atools_absorb_count value = 0 }
+			set_variable = { which = atools_cede_fail_count value = 0 }
+			set_variable = { which = atools_grow_fail_count value = 0 }
+		}
+	}
+}
+
+# Global monthly tick. on_monthly_pulse fires once per COUNTRY per month, so gate it
+# to the single country that owns the hub province -> exactly one execution per month,
+# with a fresh scope each time (no event nesting, nothing accumulated in the save).
+on_monthly_pulse = {
+	if = {
+		# Exactly one country per month. `owns = 1` is the cheap normal path (true for a
+		# single country). The ticker branch only engages when NOBODY owns the hub, and the
+		# any_country scan sits behind the cheap flag check so it runs at most once a month.
+		limit = {
+			OR = {
+				owns = 1
+				AND = {
+					has_country_flag = atools_ticker
+					NOT = { any_country = { owns = 1 } }
+				}
+			}
+		}
+		1 = {
+			# --- CONSOLE CONTROL -------------------------------------------------
+			# The whole UI contract is global flags, and EU4's console can set those
+			# directly (set_flag / clr_flag), so every toggle is already reachable
+			# without our .gui. Intervals were the one gap - they live in hub variables
+			# and the console has no variable setter. So each interval also has a
+			# request flag: the console sets it, the next tick applies it and clears it.
+			# This makes the panel OPTIONAL - delete interface/ and the mod is fully
+			# usable from the console, with zero .gui conflicts against any other mod.
+			if = {
+				limit = { has_global_flag = atools_cede_set_1 }
+				set_variable = { which = atools_cede_interval value = 1 }
+				clr_global_flag = atools_cede_set_1
+			}
+			if = {
+				limit = { has_global_flag = atools_cede_set_6 }
+				set_variable = { which = atools_cede_interval value = 6 }
+				clr_global_flag = atools_cede_set_6
+			}
+			if = {
+				limit = { has_global_flag = atools_cede_set_12 }
+				set_variable = { which = atools_cede_interval value = 12 }
+				clr_global_flag = atools_cede_set_12
+			}
+			if = {
+				limit = { has_global_flag = atools_cede_set_24 }
+				set_variable = { which = atools_cede_interval value = 24 }
+				clr_global_flag = atools_cede_set_24
+			}
+			if = {
+				limit = { has_global_flag = atools_convert_set_12 }
+				set_variable = { which = atools_convert_interval value = 12 }
+				clr_global_flag = atools_convert_set_12
+			}
+			if = {
+				limit = { has_global_flag = atools_convert_set_24 }
+				set_variable = { which = atools_convert_interval value = 24 }
+				clr_global_flag = atools_convert_set_24
+			}
+			if = {
+				limit = { has_global_flag = atools_convert_set_60 }
+				set_variable = { which = atools_convert_interval value = 60 }
+				clr_global_flag = atools_convert_set_60
+			}
+			if = {
+				limit = { has_global_flag = atools_convert_set_120 }
+				set_variable = { which = atools_convert_interval value = 120 }
+				clr_global_flag = atools_convert_set_120
+			}
+			if = {
+				limit = { has_global_flag = atools_grow_set_1 }
+				set_variable = { which = atools_grow_interval value = 1 }
+				clr_global_flag = atools_grow_set_1
+			}
+			if = {
+				limit = { has_global_flag = atools_grow_set_6 }
+				set_variable = { which = atools_grow_interval value = 6 }
+				clr_global_flag = atools_grow_set_6
+			}
+			if = {
+				limit = { has_global_flag = atools_grow_set_12 }
+				set_variable = { which = atools_grow_interval value = 12 }
+				clr_global_flag = atools_grow_set_12
+			}
+			if = {
+				limit = { has_global_flag = atools_grow_set_24 }
+				set_variable = { which = atools_grow_interval value = 24 }
+				clr_global_flag = atools_grow_set_24
+			}
+			if = {
+				limit = { has_global_flag = atools_absorb_set_1 }
+				set_variable = { which = atools_absorb_interval value = 1 }
+				clr_global_flag = atools_absorb_set_1
+			}
+			if = {
+				limit = { has_global_flag = atools_absorb_set_6 }
+				set_variable = { which = atools_absorb_interval value = 6 }
+				clr_global_flag = atools_absorb_set_6
+			}
+			if = {
+				limit = { has_global_flag = atools_absorb_set_12 }
+				set_variable = { which = atools_absorb_interval value = 12 }
+				clr_global_flag = atools_absorb_set_12
+			}
+			if = {
+				limit = { has_global_flag = atools_absorb_set_24 }
+				set_variable = { which = atools_absorb_interval value = 24 }
+				clr_global_flag = atools_absorb_set_24
+			}
+
+			# Each tool has its OWN elapsed-month counter + interval, so their cadences
+			# are independent. Bump both counters; when a counter reaches its tool's
+			# interval, reset it and run that tool (if enabled).
+			change_variable = { which = atools_months value = 1 }
+			change_variable = { which = atools_convert_months value = 1 }
+			change_variable = { which = atools_grow_months value = 1 }
+			change_variable = { which = atools_absorb_months value = 1 }
+
+			# Anti-snowball shrink tool.
+			if = {
+				limit = {
+					check_variable = { which = atools_cede_interval value = 1 }              # interval >= 1
+					check_variable = { which = atools_months which = atools_cede_interval }   # months >= interval
+				}
+				set_variable = { which = atools_months value = 0 }
+				if = { limit = { has_global_flag = atools_cede_enabled } atools_cede_effect = yes }
+			}
+
+			# Auto-convert religion & culture tool.
+			if = {
+				limit = {
+					check_variable = { which = atools_convert_interval value = 1 }
+					check_variable = { which = atools_convert_months which = atools_convert_interval }
+				}
+				set_variable = { which = atools_convert_months value = 0 }
+				if = { limit = { has_global_flag = atools_convert_enabled } atools_convert_effect = yes }
+			}
+
+			# Auto-grow the weakest nation (the reverse of the shrink).
+			if = {
+				limit = {
+					check_variable = { which = atools_grow_interval value = 1 }
+					check_variable = { which = atools_grow_months which = atools_grow_interval }
+				}
+				set_variable = { which = atools_grow_months value = 0 }
+				if = { limit = { has_global_flag = atools_grow_enabled } atools_grow_effect = yes }
+			}
+
+			# Absorb exclaves left behind by the shrink/grow churn.
+			if = {
+				limit = {
+					check_variable = { which = atools_absorb_interval value = 1 }
+					check_variable = { which = atools_absorb_months which = atools_absorb_interval }
+				}
+				set_variable = { which = atools_absorb_months value = 0 }
+				if = { limit = { has_global_flag = atools_absorb_enabled } atools_absorb_effect = yes }
+			}
 		}
 	}
 }

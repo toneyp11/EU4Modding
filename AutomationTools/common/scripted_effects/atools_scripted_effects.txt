@@ -9,27 +9,150 @@
 # Reliability notes (hard-won):
 #  - `exists = event_target:X` is unreliable here (returns false even when the
 #    target IS saved), so we guard with GLOBAL FLAGS instead.
-#  - Finding the biggest/weakest nation uses vanilla's threshold-ladder idiom
-#    (numeric total_development + any_country/random_country), not mid-iteration
-#    event_target comparisons (which don't resolve).
+#  - Biggest/weakest use an exact running max/min over every_country /
+#    every_neighbor_country (the vanilla flavorBYZ idiom). `= PREV` never resolves.
+#  - NEVER put a scope command (.GetName/.GetValue) in a log -> stack-overflow crash.
+#
+# DEFENSIVE DESIGN (added while hunting the ~1590 STACK_OVERFLOW, which is an
+# infinite recursion in EU4 name/string building - see docs/eu4-modding-reference.md):
+# every step is guarded so the tools can never hand the engine a degenerate state -
+# no nation is emptied, no capital is moved, no colonial nation is given vassals,
+# marker flags cannot go stale, cores are not stacked without bound, and no
+# country-scope variables are left behind (EU4 has no clear_variable, so anything
+# written there persists in the save forever).
 ##############################################################################
 
-# === Tool: Auto-cede from #1 nation (anti-snowball) =========================
-# The highest-development nation cedes one border province to a weak neighbour.
-# Called from the atools.1 timer when the tool is enabled. Selection is by
-# development BRACKET (tunable below), not exact rank.
-atools_cede_effect = {
+# --- Shared step: cede ONE border province to the weakest cede-able neighbour --
+# Called in the #1 nation's scope, either as the fallback when nothing was
+# releasable or as the only shrink route for a colonial #1.
+atools_shrink_cede_effect = {
+	log = "ATOOLS shrink F: fallback-cede"
+	clr_global_flag = atools_allow_capital_cede
+
+	# A receiver only counts if we can ACTUALLY cede to it. That test must match the
+	# province filter below exactly: the neighbour has to border a NON-CAPITAL city of
+	# the #1. Testing "any city" while the cede refuses capitals let a small nation
+	# (e.g. Granada, whose only province touching its weakest neighbour was its own
+	# capital) pick a receiver it could never hand anything to - stuck every month.
+	#
+	# Pass 1: prefer a NON-colonial receiver. Handing provinces to a colonial nation
+	# can re-parent colonial nations, and a loop in that parent chain is the leading
+	# suspect for the name-resolution crash.
+	every_neighbor_country = {
+		if = {
+			limit = {
+				is_colonial_nation = no
+				any_owned_province = { any_neighbor_province = { is_city = yes is_capital = no owned_by = event_target:atools_top_nation } }
+				OR = {
+					NOT = { has_global_flag = atools_have_receiver }
+					NOT = { total_development = event_target:atools_receiver }
+				}
+			}
+			save_event_target_as = atools_receiver
+			set_global_flag = atools_have_receiver
+		}
+	}
+	# Pass 2: no non-colonial candidate (e.g. a colonial #1 in the Americas whose
+	# neighbours are all colonial) -> allow colonial receivers rather than stall.
+	if = {
+		limit = { NOT = { has_global_flag = atools_have_receiver } }
+		every_neighbor_country = {
+			if = {
+				limit = {
+					any_owned_province = { any_neighbor_province = { is_city = yes is_capital = no owned_by = event_target:atools_top_nation } }
+					OR = {
+						NOT = { has_global_flag = atools_have_receiver }
+						NOT = { total_development = event_target:atools_receiver }
+					}
+				}
+				save_event_target_as = atools_receiver
+				set_global_flag = atools_have_receiver
+			}
+		}
+	}
+	# Pass 3 (last resort): the #1 has no non-capital province touching anyone - the
+	# only way to shrink it is to give up the capital. EU4 relocates the seat of
+	# government automatically. Better than being wedged on the same nation forever.
+	if = {
+		limit = { NOT = { has_global_flag = atools_have_receiver } }
+		set_global_flag = atools_allow_capital_cede
+		every_neighbor_country = {
+			if = {
+				limit = {
+					any_owned_province = { any_neighbor_province = { is_city = yes owned_by = event_target:atools_top_nation } }
+					OR = {
+						NOT = { has_global_flag = atools_have_receiver }
+						NOT = { total_development = event_target:atools_receiver }
+					}
+				}
+				save_event_target_as = atools_receiver
+				set_global_flag = atools_have_receiver
+			}
+		}
+	}
+	log = "ATOOLS shrink G: min-done"
+
+	if = {
+		limit = { NOT = { has_global_flag = atools_have_receiver } }
+		log = "ATOOLS shrink G2: NO-RECEIVER (no bordering country at all)"
+	}
+	if = {
+		limit = { has_global_flag = atools_have_receiver }
+		random_owned_province = {
+			limit = {
+				is_city = yes
+				# Normally never cede a capital (it forces the engine to relocate the seat
+				# of government). Pass 3 above sets the flag when the capital is the ONLY
+				# thing that can be given up, so we prefer that over stalling forever.
+				OR = {
+					is_capital = no
+					has_global_flag = atools_allow_capital_cede
+				}
+				any_neighbor_province = { owned_by = event_target:atools_receiver }
+			}
+			log = "ATOOLS shrink H: province-picked"
+			# Only add a core if the receiver lacks one. Adding unconditionally stacked
+			# cores on the same provinces every run for the whole game, which also
+			# inflates what release_all_possible_countries can later release.
+			if = {
+				limit = { NOT = { is_core = event_target:atools_receiver } }
+				add_core = event_target:atools_receiver
+			}
+			cede_province = event_target:atools_receiver
+			log = "ATOOLS shrink I: province-ceded"
+			# Only strip the giver's core if it actually had one - avoids "Failed to
+			# remove prov N as core, it hasnt got it" error spam.
+			if = {
+				limit = { is_core = event_target:atools_top_nation }
+				remove_core = event_target:atools_top_nation
+			}
+			1 = { change_variable = { which = atools_cede_count value = 1 } }
+			set_global_flag = atools_shrink_done      # this attempt actually shrank someone
+		}
+	}
+	log = "ATOOLS shrink J: fallback-done"
+}
+
+# --- One shrink ATTEMPT: pick the biggest not-yet-skipped nation and try to shrink it.
+# Sets atools_shrink_done on success; on failure it flags that nation so the next attempt
+# moves on. EU4 has NO "can this nation be released?" trigger (has_releasable_nation /
+# can_release_nation / num_of_released_nations do not exist), so the only way to know
+# whether a nation can be shrunk is to try.
+atools_shrink_attempt_effect = {
 	clr_global_flag = atools_have_top
 	clr_global_flag = atools_have_receiver
 
-	# 1) Top nation = the EXACT most-developed country (running maximum, the vanilla
-	# flavorBYZ idiom). Each candidate whose dev >= the current best overwrites it; the
-	# first candidate seeds it (no flag yet). Ties -> last one iterated wins.
-	# NOTE: subjects ARE eligible - a huge vassal can be the #1, else the most-developed
-	# nation in the world would escape anti-snowball just by being a subject.
+	# Top nation = the EXACT most-developed country (running maximum; first candidate
+	# seeds it, then anything >= replaces it). Subjects and colonial nations are eligible.
+	# Requires >= 2 cities so a cede can never wipe a nation off the map.
+	# NOTE: deliberately NO "must have a neighbour" filter. An island nation (Britain,
+	# Japan) has no land or strait neighbour but can still be shrunk by RELEASING nations
+	# from inside itself; filtering on neighbours skipped those before they got the chance.
 	every_country = {
 		if = {
 			limit = {
+				num_of_cities = 2
+				NOT = { has_country_flag = atools_skip_top }
 				OR = {
 					NOT = { has_global_flag = atools_have_top }
 					total_development = event_target:atools_top_nation
@@ -42,70 +165,124 @@ atools_cede_effect = {
 
 	if = {
 		limit = { has_global_flag = atools_have_top }
+		log = "ATOOLS shrink A: top-found"
 		event_target:atools_top_nation = {
-
-			# 2) PRIMARY shrink: carve out every nation releasable from its owned land,
-			# then free them (and any pre-existing subjects) so they end up INDEPENDENT.
-			# release_all_possible_countries releases as vassals; release_all_subjects
-			# then frees them. Snapshot total development around it: if it fell, land
-			# left the nation => a release actually happened.
-			export_to_variable = { which = atools_td_before value = total_development }
-			release_all_possible_countries = yes
-			release_all_subjects = yes
-			export_to_variable = { which = atools_td_after value = total_development }
+			# DIAGNOSTIC: stamp the current #1 so a save captured before a crash names the
+			# nation we last acted on (.GetName in a log is itself a crash, so we cannot log it).
+			set_country_flag = atools_last_top
 
 			if = {
-				# Development dropped -> the primary mechanism did the shrinking. Done.
-				limit = { NOT = { check_variable = { which = atools_td_after which = atools_td_before } } }
-				1 = { change_variable = { which = atools_cede_count value = 1 } }
+				# A colonial nation shrinks by CEDING only. Releasing from one would make it the
+				# overlord of its own vassals while it is itself a subject of its colonial parent.
+				limit = { is_colonial_nation = yes }
+				log = "ATOOLS shrink K: colonial-top-cede-only"
+				atools_shrink_cede_effect = yes
 			}
 			else = {
-				# 3) FALLBACK: nothing was releasable -> cede a border province to the
-				# EXACT weakest neighbour (running minimum: a candidate strictly below the
-				# current best overwrites it; first candidate seeds it). Ties -> first one
-				# kept. Subjects ARE eligible recipients (own or another's vassal); a
-				# country is never its own neighbour, so it can't pick itself.
-				every_neighbor_country = {
-					if = {
-						limit = {
-							OR = {
-								NOT = { has_global_flag = atools_have_receiver }
-								NOT = { total_development = event_target:atools_receiver }
-							}
-						}
-						save_event_target_as = atools_receiver
-						set_global_flag = atools_have_receiver
-					}
-				}
+				# PRIMARY: release everything releasable, then free the NEW subjects only.
+				# This needs no neighbour, so it works for island nations.
+				log = "ATOOLS shrink B: pre-release_all_possible"
+				# Clear THEN set: a country dead at global pre-clean time cannot be reached by
+				# every_country, so a revived tag can return carrying a stale flag from a past life.
+				every_subject_country = { clr_country_flag = atools_preexisting_sub }
+				every_subject_country = { set_country_flag = atools_preexisting_sub }
+				# Snapshot development around the release. Detecting only "a new SUBJECT appeared"
+				# assumes release_all_possible_countries hands them over as vassals - if it releases
+				# them already INDEPENDENT there is no new subject, the release is invisible to us,
+				# and we wrongly fall through and cede on top of it. A development drop catches
+				# both forms. (Cost: two float variables on any nation that has been #1. EU4 has no
+				# clear_variable so they persist, but the save-bloat audit measured this as
+				# negligible - it was never the source of the save growth.)
+				export_to_variable = { which = atools_td_before value = total_development }
+				release_all_possible_countries = yes
+				export_to_variable = { which = atools_td_after value = total_development }
+				log = "ATOOLS shrink C: post-release_all_possible"
 
 				if = {
-					limit = { has_global_flag = atools_have_receiver }
-					random_owned_province = {
-						limit = {
-							is_city = yes
-							any_neighbor_province = { owned_by = event_target:atools_receiver }
+					# Did the release create anything? Ask the subject list directly rather than
+					# snapshotting development into country variables (EU4 has no clear_variable,
+					# so those persist in the save forever).
+					limit = {
+						OR = {
+							# land left the nation -> a release happened, vassal or independent
+							NOT = { check_variable = { which = atools_td_after which = atools_td_before } }
+							# or new subjects appeared -> vassal-style release
+							any_subject_country = { NOT = { has_country_flag = atools_preexisting_sub } }
 						}
-						add_core = event_target:atools_receiver
-						cede_province = event_target:atools_receiver
-						remove_core = event_target:atools_top_nation
-						1 = { change_variable = { which = atools_cede_count value = 1 } }
 					}
+					every_subject_country = {
+						limit = {
+							NOT = { has_country_flag = atools_preexisting_sub }
+							is_colonial_nation = no
+						}
+						grant_independence = yes
+					}
+					log = "ATOOLS shrink E: released-ok"
+					1 = { change_variable = { which = atools_cede_count value = 1 } }
+					set_global_flag = atools_shrink_done
 				}
+				else = { atools_shrink_cede_effect = yes }
 			}
+		}
+
+		# Nothing worked on this nation - nothing releasable AND nobody to cede to (a fully
+		# cored island, or a colonial nation ringed by uncolonized land). Flag it so the next
+		# attempt targets the next-largest instead of wedging here forever.
+		if = {
+			limit = { NOT = { has_global_flag = atools_shrink_done } }
+			log = "ATOOLS shrink S: un-shrinkable, skipping to next"
+			event_target:atools_top_nation = { set_country_flag = atools_skip_top }
 		}
 	}
 }
 
+# === Tool: Auto-shrink the #1 nation (anti-snowball) ========================
+# Each run the most-developed nation is shrunk: it first releases every nation it can as
+# INDEPENDENT states; if nothing was releasable it cedes one border province to its
+# weakest neighbour. A nation that can do neither is skipped and the next-largest is
+# tried (EU4 has no loops, so the retry is unrolled). Called from on_monthly_pulse.
+atools_cede_effect = {
+	clr_global_flag = atools_shrink_done
+
+	# Per-run scratch flags - clear globally first (see the revived-tag note above).
+	every_country = { limit = { has_country_flag = atools_preexisting_sub } clr_country_flag = atools_preexisting_sub }
+	every_country = { limit = { has_country_flag = atools_last_top } clr_country_flag = atools_last_top }
+	every_country = { limit = { has_country_flag = atools_skip_top } clr_country_flag = atools_skip_top }
+
+	atools_shrink_attempt_effect = yes
+	if = { limit = { NOT = { has_global_flag = atools_shrink_done } } atools_shrink_attempt_effect = yes }
+	if = { limit = { NOT = { has_global_flag = atools_shrink_done } } atools_shrink_attempt_effect = yes }
+
+	# Count a run that accomplished nothing after every attempt, so the panel can show
+	# how often the tool fired but could not act, rather than leaving that invisible.
+	if = {
+		limit = { NOT = { has_global_flag = atools_shrink_done } }
+		1 = { change_variable = { which = atools_cede_fail_count value = 1 } }
+	}
+
+	# Post-clean so nothing survives this run.
+	every_country = { limit = { has_country_flag = atools_preexisting_sub } clr_country_flag = atools_preexisting_sub }
+	every_country = { limit = { has_country_flag = atools_skip_top } clr_country_flag = atools_skip_top }
+}
+
 # === Tool: Auto-convert religion & culture ==================================
 # Fights religious/cultural stagnation (vanilla AI almost never converts same-group
-# "heretic" provinces or foreign cultures). Each interval, every owned province whose
-# religion/culture differs from its owner's has a CHANCE to flip toward the owner, so
-# the map homogenises gradually rather than all at once. change_religion/change_culture
-# accept a country scope; `owner` = the province's owner (religion + primary culture).
-# The chance below is the per-province, per-interval percent (tune to taste).
+# "heretic" provinces or foreign cultures). Each run, every owned province whose
+# religion/culture differs from its owner's has a CHANCE to flip toward the owner,
+# so the map homogenises gradually rather than all at once. change_religion /
+# change_culture accept a country scope; `owner` = the province's owner.
 atools_convert_effect = {
+	# TEMP traces: the convert pass had NO logging, so a crash during/just after a
+	# conversion sweep was indistinguishable from one during the shrink. change_culture
+	# in particular makes the engine re-derive province names (they are culture-specific),
+	# which is string building - the exact area the stack overflow lives in.
+	log = "ATOOLS convert: start"
 	every_province = {
-		limit = { is_city = yes }
+		limit = {
+			is_city = yes
+			owner = { always = yes }              # defensive: must have a valid owner scope
+			controlled_by = owner                 # skip occupied / besieged provinces
+		}
 		if = {
 			limit = { NOT = { religion = owner } }
 			random = { chance = 20 change_religion = owner }
@@ -115,4 +292,265 @@ atools_convert_effect = {
 			random = { chance = 20 change_culture = owner }
 		}
 	}
+	log = "ATOOLS convert: done"
+}
+
+# === Tool: Auto-grow the weakest nation (the reverse of the shrink) =========
+# Each run the world's LEAST-developed nation gains land, so with the shrink also on,
+# development converges from both ends. Order of preference:
+#   1. CLAIM an adjacent uncolonized province outright (create_colony = 1000 - 1000 is
+#      the colony->city threshold, so the province is settled INSTANTLY as a full owned
+#      province, no colonial growth phase. Vanilla idiom: PropagateReligionEvents.txt).
+#   2. TAKE one border province from its STRONGEST neighbour.
+# Note the two tools cannot ping-pong a province: both move land from strong to weak,
+# so they reinforce rather than fight each other.
+
+# --- Take one border province from the weakest nation's strongest neighbour ---
+# Called in the weakest nation's scope.
+atools_grow_take_effect = {
+	# Donor = strongest neighbour that ACTUALLY has a takeable province. This limit is
+	# kept CHARACTER-IDENTICAL to the random_owned_province limit below - letting an
+	# eligibility test drift from the action it gates is what wedged the shrink twice.
+	every_neighbor_country = {
+		if = {
+			limit = {
+				num_of_cities = 2                    # donor survives losing one province
+				any_owned_province = {
+					is_city = yes
+					is_capital = no
+					any_neighbor_province = { owned_by = event_target:atools_weakest }
+				}
+				OR = {
+					NOT = { has_global_flag = atools_have_donor }
+					total_development = event_target:atools_donor      # running MAXIMUM
+				}
+			}
+			save_event_target_as = atools_donor
+			set_global_flag = atools_have_donor
+		}
+	}
+	log = "ATOOLS grow D: donor-done"
+
+	if = {
+		limit = { has_global_flag = atools_have_donor }
+		event_target:atools_donor = {
+			random_owned_province = {
+				limit = {
+					is_city = yes
+					is_capital = no                  # never take a nation's seat of government
+					any_neighbor_province = { owned_by = event_target:atools_weakest }
+				}
+				log = "ATOOLS grow E: province-picked"
+				if = {
+					limit = { NOT = { is_core = event_target:atools_weakest } }
+					add_core = event_target:atools_weakest
+				}
+				cede_province = event_target:atools_weakest
+				log = "ATOOLS grow F: province-taken"
+				if = {
+					limit = { is_core = event_target:atools_donor }
+					remove_core = event_target:atools_donor
+				}
+				1 = { change_variable = { which = atools_grow_count value = 1 } }
+				set_global_flag = atools_grow_done
+			}
+		}
+	}
+}
+
+# --- One grow ATTEMPT: pick the smallest not-yet-skipped nation and try to grow it ---
+atools_grow_attempt_effect = {
+	clr_global_flag = atools_have_weakest
+	clr_global_flag = atools_have_donor
+	# Clear the diagnostic stamp each ATTEMPT so it ends up on the nation we actually
+	# acted on, not on every candidate tried this run.
+	every_country = { limit = { has_country_flag = atools_last_weakest } clr_country_flag = atools_last_weakest }
+
+	# Weakest = the EXACT least-developed country (running MINIMUM: a candidate strictly
+	# below the current best replaces it; the first candidate seeds it). Must own at
+	# least one city so dead/landless tags are never picked.
+	#
+	# POTENTIAL-TO-GROW PRE-FILTER: only consider nations that have SOME route to grow.
+	# Tiny island nations kept winning the "least developed" contest while having nothing
+	# to claim and nobody to take from, so every attempt was spent on a hopeless candidate
+	# and the floor never moved. Requiring a route up front means the retries below are
+	# spent on nations that can actually be grown, instead of re-discovering the same
+	# dead ends. (We cannot fully verify the take route here - the inner province test
+	# would need to reference the candidate country, which has no name yet inside
+	# every_country - so this is a necessary-but-not-sufficient filter and the
+	# attempt-then-skip retry still catches the remainder.)
+	every_country = {
+		if = {
+			limit = {
+				num_of_cities = 1
+				NOT = { has_country_flag = atools_skip_weak }
+				OR = {
+					# CHEAP TEST FIRST: somebody to take from - a neighbour big enough to survive
+					# losing a province. True for most nations, so it short-circuits the scan below.
+					any_neighbor_country = { num_of_cities = 2 }
+					# EXPENSIVE TEST SECOND: something to claim - an adjacent uncolonised,
+					# non-wasteland province. This walks every owned province AND its neighbours,
+					# so only isolated nations (the ones that actually need it) pay for it.
+					any_owned_province = { any_empty_neighbor_province = { is_wasteland = no } }
+				}
+				OR = {
+					NOT = { has_global_flag = atools_have_weakest }
+					NOT = { total_development = event_target:atools_weakest }
+				}
+			}
+			save_event_target_as = atools_weakest
+			set_global_flag = atools_have_weakest
+		}
+	}
+
+	if = {
+		limit = { has_global_flag = atools_have_weakest }
+		log = "ATOOLS grow A: weakest-found"
+		event_target:atools_weakest = {
+			set_country_flag = atools_last_weakest      # DIAGNOSTIC: names the target in a save
+			if = {
+				# PRIORITY 1: claim an adjacent uncolonized province outright. Needs no
+				# neighbour COUNTRY, so this also works for isolated/island nations.
+				#
+				# SCOPE (this was wrong before and silently disabled the whole branch):
+				# any_/random_empty_neighbor_province are PROVINCE-scope iterators - the
+				# empty neighbours OF A PROVINCE. Called from country scope they just
+				# return false, so the claim never fired once. Vanilla always nests them
+				# inside a province (OrderEvents: any_owned_province = { ...
+				# any_empty_neighbor_province = { ... } }; colonial.1 is a province_event).
+				# Going through one of OUR OWN provinces also fixes attribution: in a
+				# province context create_colony settles it for that province's owner,
+				# i.e. the weakest nation.
+				limit = { any_owned_province = { any_empty_neighbor_province = { is_wasteland = no } } }
+				log = "ATOOLS grow B: claim-empty"
+				random_owned_province = {
+					limit = { any_empty_neighbor_province = { is_wasteland = no } }
+					random_empty_neighbor_province = {
+						limit = { is_wasteland = no }
+						# 1000 settlers = the colony->city threshold, so the province is
+						# settled immediately as a full owned province rather than a colony
+						# that has to grow (vanilla: PropagateReligionEvents.txt).
+						create_colony = 1000
+						# DIAGNOSTIC: mark it so a save shows (a) that the province really became a city
+						# and (b) WHO owns it - create_colony's attribution from this scope is unproven.
+						set_province_flag = atools_claimed
+						# Success is flagged HERE, innermost - if no non-wasteland empty
+						# neighbour existed we must not claim the attempt succeeded.
+						1 = { change_variable = { which = atools_grow_count value = 1 } }
+						set_global_flag = atools_grow_done
+					}
+				}
+			}
+			else = {
+				log = "ATOOLS grow C: take-from-strongest"
+				atools_grow_take_effect = yes
+			}
+		}
+
+		# Could neither claim nor take (landlocked by wasteland, or every neighbour is a
+		# one-province minor). Skip it so the next attempt targets the next-smallest.
+		if = {
+			limit = { NOT = { has_global_flag = atools_grow_done } }
+			log = "ATOOLS grow S: un-growable, skipping to next"
+			event_target:atools_weakest = { set_country_flag = atools_skip_weak }
+		}
+	}
+}
+
+# --- Orchestrator: try up to three candidates (EU4 has no loops) ---
+atools_grow_effect = {
+	clr_global_flag = atools_grow_done
+	every_country = { limit = { has_country_flag = atools_skip_weak } clr_country_flag = atools_skip_weak }
+	every_country = { limit = { has_country_flag = atools_last_weakest } clr_country_flag = atools_last_weakest }
+
+	# Iterate down from the bottom until we find a nation that can actually be grown.
+	# Each failed attempt flags that nation and the next one targets the next-smallest.
+	# Six unrolled passes (EU4 has no loops): with the potential-to-grow pre-filter above
+	# most runs succeed on the first, and the rest cover clustered dead ends.
+	atools_grow_attempt_effect = yes
+	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
+	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
+	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
+	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
+	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
+
+	if = {
+		limit = { NOT = { has_global_flag = atools_grow_done } }
+		1 = { change_variable = { which = atools_grow_fail_count value = 1 } }
+	}
+	every_country = { limit = { has_country_flag = atools_skip_weak } clr_country_flag = atools_skip_weak }
+}
+
+# === Tool: Absorb exclaves =================================================
+# The shrink and grow both hand over BORDER provinces, so over time the map gets
+# speckled with cut-off holdings. This pass cleans them up: a province with NO
+# adjacent province owned by its own owner is handed to its weakest adjacent nation.
+#
+# Deliberately NOT using is_overseas here. That trigger is true for any province with
+# no land route to the capital, which includes every colonial province across an
+# ocean - using it would dismantle colonial empires rather than clean up specks.
+# 'Fully surrounded' only catches genuinely isolated provinces; multi-province
+# colonies border each other and are left alone.
+#
+# Iterating COUNTRIES (not provinces) lets us save the owner once per country and
+# then test each of its provinces against it - a province cannot otherwise refer to
+# its own owner in a neighbour test (PREV does not resolve here).
+atools_absorb_effect = {
+	log = "ATOOLS absorb: start"
+	every_country = {
+		# num_of_cities = 2 is critical: a ONE-province nation is by definition "fully
+		# surrounded", so without this the pass would delete every one-province minor in
+		# the game - fighting the grow tool head-on. random_owned_province (not every_)
+		# also caps this at ONE province per nation per run, so a small nation can never
+		# be absorbed out of existence in a single pass.
+		limit = { num_of_cities = 2 }
+		save_event_target_as = atools_absorb_owner
+		random_owned_province = {
+			limit = {
+				is_city = yes
+				is_capital = no                                    # never absorb a seat of government
+				# fully surrounded: nothing adjacent belongs to our own owner...
+				NOT = { any_neighbor_province = { owned_by = event_target:atools_absorb_owner } }
+				# ...and somebody adjacent can actually take it.
+				any_neighbor_province = { is_city = yes }
+			}
+			clr_global_flag = atools_have_absorber
+			# Absorber = the WEAKEST adjacent nation (running minimum over adjacent owners),
+			# matching how the shrink picks recipients and avoiding feeding a giant that the
+			# shrink would only have to claw back.
+			every_neighbor_province = {
+				limit = {
+					is_city = yes
+					NOT = { owned_by = event_target:atools_absorb_owner }
+				}
+				owner = {
+					if = {
+						limit = {
+							OR = {
+								NOT = { has_global_flag = atools_have_absorber }
+								NOT = { total_development = event_target:atools_absorber }
+							}
+						}
+						save_event_target_as = atools_absorber
+						set_global_flag = atools_have_absorber
+					}
+				}
+			}
+			if = {
+				limit = { has_global_flag = atools_have_absorber }
+				if = {
+					limit = { NOT = { is_core = event_target:atools_absorber } }
+					add_core = event_target:atools_absorber
+				}
+				cede_province = event_target:atools_absorber
+				if = {
+					limit = { is_core = event_target:atools_absorb_owner }
+					remove_core = event_target:atools_absorb_owner
+				}
+				1 = { change_variable = { which = atools_absorb_count value = 1 } }
+				log = "ATOOLS absorb: province absorbed"
+			}
+		}
+	}
+	log = "ATOOLS absorb: done"
 }
