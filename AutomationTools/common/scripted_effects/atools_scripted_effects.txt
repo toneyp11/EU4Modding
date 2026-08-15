@@ -370,29 +370,13 @@ atools_grow_attempt_effect = {
 	# below the current best replaces it; the first candidate seeds it). Must own at
 	# least one city so dead/landless tags are never picked.
 	#
-	# POTENTIAL-TO-GROW PRE-FILTER: only consider nations that have SOME route to grow.
-	# Tiny island nations kept winning the "least developed" contest while having nothing
-	# to claim and nobody to take from, so every attempt was spent on a hopeless candidate
-	# and the floor never moved. Requiring a route up front means the retries below are
-	# spent on nations that can actually be grown, instead of re-discovering the same
-	# dead ends. (We cannot fully verify the take route here - the inner province test
-	# would need to reference the candidate country, which has no name yet inside
-	# every_country - so this is a necessary-but-not-sufficient filter and the
-	# attempt-then-skip retry still catches the remainder.)
+	# Every nation can now be grown - if it cannot claim or take, it develops what it
+	# already owns - so there is no need to pre-filter candidates for a viable route.
 	every_country = {
 		if = {
 			limit = {
 				num_of_cities = 1
 				NOT = { has_country_flag = atools_skip_weak }
-				OR = {
-					# CHEAP TEST FIRST: somebody to take from - a neighbour big enough to survive
-					# losing a province. True for most nations, so it short-circuits the scan below.
-					any_neighbor_country = { num_of_cities = 2 }
-					# EXPENSIVE TEST SECOND: something to claim - an adjacent uncolonised,
-					# non-wasteland province. This walks every owned province AND its neighbours,
-					# so only isolated nations (the ones that actually need it) pay for it.
-					any_owned_province = { any_empty_neighbor_province = { is_wasteland = no } }
-				}
 				OR = {
 					NOT = { has_global_flag = atools_have_weakest }
 					NOT = { total_development = event_target:atools_weakest }
@@ -444,6 +428,27 @@ atools_grow_attempt_effect = {
 			else = {
 				log = "ATOOLS grow C: take-from-strongest"
 				atools_grow_take_effect = yes
+				if = {
+					# LAST RESORT: nothing to claim and nobody to take from (an island minor, or
+					# a nation ringed by one-province neighbours). Rather than skip it, develop
+					# what it already owns by +1. This is the only route that ALWAYS works, so the
+					# smallest nations keep creeping up no matter how boxed in they are - which is
+					# what finally lets the development floor rise instead of sitting at 3.
+					limit = { NOT = { has_global_flag = atools_grow_done } }
+					random_owned_province = {
+						limit = { is_city = yes }
+						# EU4 has no add_development; development is the sum of the three, so add 1
+						# to a random one of them rather than always fattening tax.
+						random_list = {
+							1 = { add_base_tax = 1 }
+							1 = { add_base_production = 1 }
+							1 = { add_base_manpower = 1 }
+						}
+						log = "ATOOLS grow G: developed +1"
+						1 = { change_variable = { which = atools_grow_count value = 1 } }
+						set_global_flag = atools_grow_done
+					}
+				}
 			}
 		}
 
@@ -468,9 +473,6 @@ atools_grow_effect = {
 	# Six unrolled passes (EU4 has no loops): with the potential-to-grow pre-filter above
 	# most runs succeed on the first, and the rest cover clustered dead ends.
 	atools_grow_attempt_effect = yes
-	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
-	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
-	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
 	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
 	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
 
