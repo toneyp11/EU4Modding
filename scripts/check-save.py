@@ -130,7 +130,42 @@ def main(path):
     return 1 if problems else 0
 
 
+
+
+def verify_tools(path):
+    """Check the two unproven behaviours: claim attribution and release detection.
+
+    Run as: python scripts/check-save.py <save> --tools
+    """
+    txt = load(path)
+    print("\n== Tool verification ==")
+    ps, pe = txt.find("\nprovinces={"), txt.find("\ncountries={")
+    seg = txt[ps:pe]
+    hits = [(int(m.group(1)), m.start()) for m in re.finditer(r"\n-(\d+)=\{", seg)]
+    claimed = []
+    for i, (pid, s) in enumerate(hits):
+        e = hits[i + 1][1] if i + 1 < len(hits) else len(seg)
+        blk = seg[s:e]
+        if "atools_claimed" in blk:
+            own = re.search(r'\n\t\towner="([A-Z0-9-]{3})"', blk)
+            city = "is_city=yes" in blk.replace(" ", "")
+            claimed.append((pid, own.group(1) if own else "NOBODY", city))
+    if claimed:
+        print(f"  claimed provinces: {len(claimed)}")
+        for pid, own, city in claimed[:12]:
+            flag = "" if own != "NOBODY" and city else "   <== PROBLEM"
+            print(f"      province {pid:<6} owner={own:<8} is_city={city}{flag}")
+        print("      (owner should be a SMALL nation; is_city must be True)")
+    else:
+        print("  claimed provinces: none yet (grow's claim branch has not fired)")
+    tds = sorted(set(re.findall(r"atools_td_(?:before|after)=([0-9.]+)", txt)))
+    print(f"  release snapshot vars present on {len(re.findall(r'atools_td_before=', txt))} nation(s)")
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         sys.exit(__doc__)
-    sys.exit(main(sys.argv[1]))
+    rc = main(sys.argv[1])
+    if "--tools" in sys.argv:
+        verify_tools(sys.argv[1])
+    sys.exit(rc)

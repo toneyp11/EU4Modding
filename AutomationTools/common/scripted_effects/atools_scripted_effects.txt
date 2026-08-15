@@ -186,14 +186,30 @@ atools_shrink_attempt_effect = {
 				# every_country, so a revived tag can return carrying a stale flag from a past life.
 				every_subject_country = { clr_country_flag = atools_preexisting_sub }
 				every_subject_country = { set_country_flag = atools_preexisting_sub }
+				# Snapshot development around the release. Detecting only "a new SUBJECT appeared"
+				# assumes release_all_possible_countries hands them over as vassals - if it releases
+				# them already INDEPENDENT there is no new subject, the release is invisible to us,
+				# and we wrongly fall through and cede on top of it. A development drop catches
+				# both forms. (Cost: two float variables on any nation that has been #1. EU4 has no
+				# clear_variable so they persist, but the save-bloat audit measured this as
+				# negligible - it was never the source of the save growth.)
+				export_to_variable = { which = atools_td_before value = total_development }
 				release_all_possible_countries = yes
+				export_to_variable = { which = atools_td_after value = total_development }
 				log = "ATOOLS shrink C: post-release_all_possible"
 
 				if = {
 					# Did the release create anything? Ask the subject list directly rather than
 					# snapshotting development into country variables (EU4 has no clear_variable,
 					# so those persist in the save forever).
-					limit = { any_subject_country = { NOT = { has_country_flag = atools_preexisting_sub } } }
+					limit = {
+						OR = {
+							# land left the nation -> a release happened, vassal or independent
+							NOT = { check_variable = { which = atools_td_after which = atools_td_before } }
+							# or new subjects appeared -> vassal-style release
+							any_subject_country = { NOT = { has_country_flag = atools_preexisting_sub } }
+						}
+					}
 					every_subject_country = {
 						limit = {
 							NOT = { has_country_flag = atools_preexisting_sub }
@@ -408,6 +424,9 @@ atools_grow_attempt_effect = {
 						# settled immediately as a full owned province rather than a colony
 						# that has to grow (vanilla: PropagateReligionEvents.txt).
 						create_colony = 1000
+						# DIAGNOSTIC: mark it so a save shows (a) that the province really became a city
+						# and (b) WHO owns it - create_colony's attribution from this scope is unproven.
+						set_province_flag = atools_claimed
 						# Success is flagged HERE, innermost - if no non-wasteland empty
 						# neighbour existed we must not claim the attempt succeeded.
 						1 = { change_variable = { which = atools_grow_count value = 1 } }
