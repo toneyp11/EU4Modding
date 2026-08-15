@@ -343,11 +343,27 @@ atools_grow_attempt_effect = {
 	# Weakest = the EXACT least-developed country (running MINIMUM: a candidate strictly
 	# below the current best replaces it; the first candidate seeds it). Must own at
 	# least one city so dead/landless tags are never picked.
+	#
+	# POTENTIAL-TO-GROW PRE-FILTER: only consider nations that have SOME route to grow.
+	# Tiny island nations kept winning the "least developed" contest while having nothing
+	# to claim and nobody to take from, so every attempt was spent on a hopeless candidate
+	# and the floor never moved. Requiring a route up front means the retries below are
+	# spent on nations that can actually be grown, instead of re-discovering the same
+	# dead ends. (We cannot fully verify the take route here - the inner province test
+	# would need to reference the candidate country, which has no name yet inside
+	# every_country - so this is a necessary-but-not-sufficient filter and the
+	# attempt-then-skip retry still catches the remainder.)
 	every_country = {
 		if = {
 			limit = {
 				num_of_cities = 1
 				NOT = { has_country_flag = atools_skip_weak }
+				OR = {
+					# something to claim: an adjacent uncolonised, non-wasteland province
+					any_owned_province = { any_empty_neighbor_province = { is_wasteland = no } }
+					# or somebody to take from: a neighbour big enough to survive losing one
+					any_neighbor_country = { num_of_cities = 2 }
+				}
 				OR = {
 					NOT = { has_global_flag = atools_have_weakest }
 					NOT = { total_development = event_target:atools_weakest }
@@ -415,7 +431,14 @@ atools_grow_effect = {
 	every_country = { limit = { has_country_flag = atools_skip_weak } clr_country_flag = atools_skip_weak }
 	every_country = { limit = { has_country_flag = atools_last_weakest } clr_country_flag = atools_last_weakest }
 
+	# Iterate down from the bottom until we find a nation that can actually be grown.
+	# Each failed attempt flags that nation and the next one targets the next-smallest.
+	# Six unrolled passes (EU4 has no loops): with the potential-to-grow pre-filter above
+	# most runs succeed on the first, and the rest cover clustered dead ends.
 	atools_grow_attempt_effect = yes
+	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
+	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
+	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
 	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
 	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
 
