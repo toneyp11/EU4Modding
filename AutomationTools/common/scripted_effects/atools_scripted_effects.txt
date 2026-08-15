@@ -42,6 +42,15 @@ atools_shrink_cede_effect = {
 		if = {
 			limit = {
 				is_colonial_nation = no
+				# ANTI-OSCILLATION (mirror of the grow tool): never hand land to a nation we
+				# just took land from. Normally the #1's weakest neighbour is far smaller so one
+				# province cannot flip the ranking - but these tools deliberately EQUALISE
+				# development, and once the top nations sit within a province of each other it
+				# can, and the pair trade the same land back and forth.
+				OR = {
+					NOT = { has_country_flag = atools_just_shrank }
+					had_country_flag = { flag = atools_just_shrank days = 3650 }
+				}
 				any_owned_province = { any_neighbor_province = { is_city = yes is_capital = no owned_by = event_target:atools_top_nation } }
 				OR = {
 					NOT = { has_global_flag = atools_have_receiver }
@@ -59,6 +68,15 @@ atools_shrink_cede_effect = {
 		every_neighbor_country = {
 			if = {
 				limit = {
+					# ANTI-OSCILLATION (mirror of the grow tool): never hand land to a nation we
+					# just took land from. Normally the #1's weakest neighbour is far smaller so one
+					# province cannot flip the ranking - but these tools deliberately EQUALISE
+					# development, and once the top nations sit within a province of each other it
+					# can, and the pair trade the same land back and forth.
+					OR = {
+						NOT = { has_country_flag = atools_just_shrank }
+						had_country_flag = { flag = atools_just_shrank days = 3650 }
+					}
 					any_owned_province = { any_neighbor_province = { is_city = yes is_capital = no owned_by = event_target:atools_top_nation } }
 					OR = {
 						NOT = { has_global_flag = atools_have_receiver }
@@ -79,6 +97,15 @@ atools_shrink_cede_effect = {
 		every_neighbor_country = {
 			if = {
 				limit = {
+					# ANTI-OSCILLATION (mirror of the grow tool): never hand land to a nation we
+					# just took land from. Normally the #1's weakest neighbour is far smaller so one
+					# province cannot flip the ranking - but these tools deliberately EQUALISE
+					# development, and once the top nations sit within a province of each other it
+					# can, and the pair trade the same land back and forth.
+					OR = {
+						NOT = { has_country_flag = atools_just_shrank }
+						had_country_flag = { flag = atools_just_shrank days = 3650 }
+					}
 					any_owned_province = { any_neighbor_province = { is_city = yes owned_by = event_target:atools_top_nation } }
 					OR = {
 						NOT = { has_global_flag = atools_have_receiver }
@@ -125,6 +152,11 @@ atools_shrink_cede_effect = {
 			if = {
 				limit = { is_core = event_target:atools_top_nation }
 				remove_core = event_target:atools_top_nation
+			}
+			# Mark the nation we just took from, so it is not handed land straight back.
+			event_target:atools_top_nation = {
+				clr_country_flag = atools_just_shrank
+				set_country_flag = atools_just_shrank
 			}
 			1 = { change_variable = { which = atools_cede_count value = 1 } }
 			set_global_flag = atools_shrink_done      # this attempt actually shrank someone
@@ -222,6 +254,28 @@ atools_shrink_attempt_effect = {
 					set_global_flag = atools_shrink_done
 				}
 				else = { atools_shrink_cede_effect = yes }
+			}
+		}
+
+		# LAST RESORT (mirror of the grow tool's +1): nothing releasable and nobody to cede
+		# to. Rather than skip, take 1 development off one of its own provinces. The limit
+		# guarantees at least one component is >= 2, so the chain always reduces something
+		# and never drives a component below 1.
+		if = {
+			limit = { NOT = { has_global_flag = atools_shrink_done } }
+			event_target:atools_top_nation = {
+				random_owned_province = {
+					limit = {
+						is_city = yes
+						OR = { base_tax = 2 base_production = 2 base_manpower = 2 }
+					}
+					if = { limit = { base_tax = 2 } add_base_tax = -1 }
+					else_if = { limit = { base_production = 2 } add_base_production = -1 }
+					else = { add_base_manpower = -1 }
+					log = "ATOOLS shrink L: developed -1"
+					1 = { change_variable = { which = atools_cede_count value = 1 } }
+					set_global_flag = atools_shrink_done
+				}
 			}
 		}
 
