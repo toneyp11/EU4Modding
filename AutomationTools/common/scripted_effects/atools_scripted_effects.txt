@@ -450,3 +450,77 @@ atools_grow_effect = {
 
 	every_country = { limit = { has_country_flag = atools_skip_weak } clr_country_flag = atools_skip_weak }
 }
+
+# === Tool: Absorb exclaves =================================================
+# The shrink and grow both hand over BORDER provinces, so over time the map gets
+# speckled with cut-off holdings. This pass cleans them up: a province with NO
+# adjacent province owned by its own owner is handed to its weakest adjacent nation.
+#
+# Deliberately NOT using is_overseas here. That trigger is true for any province with
+# no land route to the capital, which includes every colonial province across an
+# ocean - using it would dismantle colonial empires rather than clean up specks.
+# 'Fully surrounded' only catches genuinely isolated provinces; multi-province
+# colonies border each other and are left alone.
+#
+# Iterating COUNTRIES (not provinces) lets us save the owner once per country and
+# then test each of its provinces against it - a province cannot otherwise refer to
+# its own owner in a neighbour test (PREV does not resolve here).
+atools_absorb_effect = {
+	log = "ATOOLS absorb: start"
+	every_country = {
+		# num_of_cities = 2 is critical: a ONE-province nation is by definition "fully
+		# surrounded", so without this the pass would delete every one-province minor in
+		# the game - fighting the grow tool head-on. random_owned_province (not every_)
+		# also caps this at ONE province per nation per run, so a small nation can never
+		# be absorbed out of existence in a single pass.
+		limit = { num_of_cities = 2 }
+		save_event_target_as = atools_absorb_owner
+		random_owned_province = {
+			limit = {
+				is_city = yes
+				is_capital = no                                    # never absorb a seat of government
+				# fully surrounded: nothing adjacent belongs to our own owner...
+				NOT = { any_neighbor_province = { owned_by = event_target:atools_absorb_owner } }
+				# ...and somebody adjacent can actually take it.
+				any_neighbor_province = { is_city = yes }
+			}
+			clr_global_flag = atools_have_absorber
+			# Absorber = the WEAKEST adjacent nation (running minimum over adjacent owners),
+			# matching how the shrink picks recipients and avoiding feeding a giant that the
+			# shrink would only have to claw back.
+			every_neighbor_province = {
+				limit = {
+					is_city = yes
+					NOT = { owned_by = event_target:atools_absorb_owner }
+				}
+				owner = {
+					if = {
+						limit = {
+							OR = {
+								NOT = { has_global_flag = atools_have_absorber }
+								NOT = { total_development = event_target:atools_absorber }
+							}
+						}
+						save_event_target_as = atools_absorber
+						set_global_flag = atools_have_absorber
+					}
+				}
+			}
+			if = {
+				limit = { has_global_flag = atools_have_absorber }
+				if = {
+					limit = { NOT = { is_core = event_target:atools_absorber } }
+					add_core = event_target:atools_absorber
+				}
+				cede_province = event_target:atools_absorber
+				if = {
+					limit = { is_core = event_target:atools_absorb_owner }
+					remove_core = event_target:atools_absorb_owner
+				}
+				1 = { change_variable = { which = atools_absorb_count value = 1 } }
+				log = "ATOOLS absorb: province absorbed"
+			}
+		}
+	}
+	log = "ATOOLS absorb: done"
+}

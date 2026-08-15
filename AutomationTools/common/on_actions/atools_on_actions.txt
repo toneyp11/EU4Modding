@@ -10,6 +10,7 @@
 #   atools_cede_enabled     UI writes / backend reads : anti-snowball tool on/off
 #   atools_convert_enabled  UI writes / backend reads : auto-convert religion+culture on/off
 #   atools_grow_enabled     UI writes / backend reads : auto-grow weakest nation on/off
+#   atools_absorb_enabled   UI writes / backend reads : absorb-exclaves tool on/off
 #   atools_ticker (country flag) : fallback tick driver when nobody owns the hub
 #
 # HUB VARIABLES (on province 1; UI displays via [1.<var>.GetValue])
@@ -18,11 +19,14 @@
 #   atools_convert_interval UI writes / backend reads : months between convert runs (>=1)
 #   atools_grow_interval    UI writes / backend reads : months between grow runs (>=1)
 #   atools_grow_count       backend writes / UI reads : total grows this game
+#   atools_absorb_interval  UI writes / backend reads : months between absorb runs (>=1)
+#   atools_absorb_count     backend writes / UI reads : total exclaves absorbed this game
 #
 # BACKEND-INTERNAL (not part of the UI contract; do not touch from UI)
 #   atools_months           shrink tick's elapsed-month counter (hub var)
 #   atools_convert_months   convert tick's elapsed-month counter (hub var)
 #   atools_grow_months      grow tick's elapsed-month counter (hub var)
+#   atools_absorb_months    absorb tick's elapsed-month counter (hub var)
 #   atools_have_top / atools_have_receiver : per-run guards inside the shrink effect
 #   event targets: atools_top_nation, atools_receiver
 # ===========================================================================
@@ -58,6 +62,10 @@ on_startup = {
 			limit = { NOT = { check_variable = { which = atools_grow_interval value = 1 } } }
 			set_variable = { which = atools_grow_interval value = 12 }       # grow: every 12 months
 		}
+		if = {
+			limit = { NOT = { check_variable = { which = atools_absorb_interval value = 1 } } }
+			set_variable = { which = atools_absorb_interval value = 12 }     # absorb: every 12 months
+		}
 	}
 
 	# COMPATIBILITY: the monthly tick below is normally driven by whoever owns the hub
@@ -82,6 +90,8 @@ on_startup = {
 			set_variable = { which = atools_convert_months value = 0 }
 			set_variable = { which = atools_grow_months value = 0 }
 			set_variable = { which = atools_grow_count value = 0 }
+			set_variable = { which = atools_absorb_months value = 0 }
+			set_variable = { which = atools_absorb_count value = 0 }
 		}
 	}
 }
@@ -110,6 +120,7 @@ on_monthly_pulse = {
 			change_variable = { which = atools_months value = 1 }
 			change_variable = { which = atools_convert_months value = 1 }
 			change_variable = { which = atools_grow_months value = 1 }
+			change_variable = { which = atools_absorb_months value = 1 }
 
 			# Anti-snowball shrink tool.
 			if = {
@@ -139,6 +150,16 @@ on_monthly_pulse = {
 				}
 				set_variable = { which = atools_grow_months value = 0 }
 				if = { limit = { has_global_flag = atools_grow_enabled } atools_grow_effect = yes }
+			}
+
+			# Absorb exclaves left behind by the shrink/grow churn.
+			if = {
+				limit = {
+					check_variable = { which = atools_absorb_interval value = 1 }
+					check_variable = { which = atools_absorb_months which = atools_absorb_interval }
+				}
+				set_variable = { which = atools_absorb_months value = 0 }
+				if = { limit = { has_global_flag = atools_absorb_enabled } atools_absorb_effect = yes }
 			}
 		}
 	}

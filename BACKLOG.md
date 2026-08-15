@@ -45,6 +45,12 @@ Running list of planned work and ideas, so we don't lose them. Newest context at
   block + UI toggle, per the add-a-tool recipe in docs/automationtools.md).
 
 ## Done
+- [x] **Absorb exclaves** — own toggle + interval (default 12mo, cycles 1/6/12/24). Any
+  province that is FULLY SURROUNDED (no adjacent province owned by its own owner) is
+  handed to its weakest adjacent nation, cleaning up the specks the shrink/grow churn
+  leaves behind. Deliberately NOT is_overseas (that would strip every overseas colony);
+  guarded so a one-province nation is never deleted (owner must have >=2 cities) and at
+  most ONE province per nation per run is absorbed.
 - [x] **Auto-grow: weakest nation** (the reverse of the shrink) — own toggle + own interval
   (`atools_grow_interval`, default 12mo, cycles 6/12/24/60). Each run the exact
   least-developed nation first CLAIMS an adjacent uncolonised province outright
