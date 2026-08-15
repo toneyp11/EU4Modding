@@ -339,6 +339,9 @@ atools_grow_take_effect = {
 atools_grow_attempt_effect = {
 	clr_global_flag = atools_have_weakest
 	clr_global_flag = atools_have_donor
+	# Clear the diagnostic stamp each ATTEMPT so it ends up on the nation we actually
+	# acted on, not on every candidate tried this run.
+	every_country = { limit = { has_country_flag = atools_last_weakest } clr_country_flag = atools_last_weakest }
 
 	# Weakest = the EXACT least-developed country (running MINIMUM: a candidate strictly
 	# below the current best replaces it; the first candidate seeds it). Must own at
@@ -359,10 +362,13 @@ atools_grow_attempt_effect = {
 				num_of_cities = 1
 				NOT = { has_country_flag = atools_skip_weak }
 				OR = {
-					# something to claim: an adjacent uncolonised, non-wasteland province
-					any_owned_province = { any_empty_neighbor_province = { is_wasteland = no } }
-					# or somebody to take from: a neighbour big enough to survive losing one
+					# CHEAP TEST FIRST: somebody to take from - a neighbour big enough to survive
+					# losing a province. True for most nations, so it short-circuits the scan below.
 					any_neighbor_country = { num_of_cities = 2 }
+					# EXPENSIVE TEST SECOND: something to claim - an adjacent uncolonised,
+					# non-wasteland province. This walks every owned province AND its neighbours,
+					# so only isolated nations (the ones that actually need it) pay for it.
+					any_owned_province = { any_empty_neighbor_province = { is_wasteland = no } }
 				}
 				OR = {
 					NOT = { has_global_flag = atools_have_weakest }
