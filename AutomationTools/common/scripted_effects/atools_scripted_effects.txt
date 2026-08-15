@@ -315,6 +315,15 @@ atools_grow_take_effect = {
 		if = {
 			limit = {
 				num_of_cities = 2                    # donor survives losing one province
+				# ANTI-OSCILLATION: never raid a nation this tool just boosted. Taking a
+				# province from a neighbour only slightly bigger flips which of the two is
+				# weakest, so next run the loser takes it straight back and the pair trade the
+				# same land forever. A 10-year cooldown breaks the cycle WITHOUT skipping the
+				# nation - it simply takes from someone else, or falls through to +1 development.
+				OR = {
+					NOT = { has_country_flag = atools_just_grew }
+					had_country_flag = { flag = atools_just_grew days = 3650 }
+				}
 				any_owned_province = {
 					is_city = yes
 					is_capital = no
@@ -350,6 +359,11 @@ atools_grow_take_effect = {
 				if = {
 					limit = { is_core = event_target:atools_donor }
 					remove_core = event_target:atools_donor
+				}
+				# Mark the nation we just grew so it cannot be raided straight back.
+				event_target:atools_weakest = {
+					clr_country_flag = atools_just_grew
+					set_country_flag = atools_just_grew
 				}
 				1 = { change_variable = { which = atools_grow_count value = 1 } }
 				set_global_flag = atools_grow_done
