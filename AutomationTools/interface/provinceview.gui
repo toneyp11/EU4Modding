@@ -583,100 +583,94 @@ guiTypes = {
 			# The x/y below are calibrated for 2560x1440 (RESOLUTION-SPECIFIC) and were
 			# re-tuned when the panel was resized. Nudge to fine-tune: x+ = right,
 			# y+ = down, ~1 unit per pixel.
-			windowType = {
+						windowType = {
 				name = "atools_panel"
 				scripted = yes
 				backGround = ""
-				position = { x = 886 y = -526 }
-				size = { x = 250 y = 490 }
+				position = { x = 751 y = -426 }
+				size = { x = 520 y = 290 }
 				moveable = 1
 				Orientation = "CENTER"
 
-				# Background drawn as a CHILD element. gfx_message_bg is a resizable
-				# corneredTileSpriteType; vanilla only ever uses it as a child
-				# quadTextureSprite (see settings.gui "PopUpDialog"). Putting a
-				# corneredTile sprite in a windowType backGround crashes the engine.
+				# Background as a CHILD element: a corneredTileSpriteType in a windowType
+				# backGround crashes the engine (see docs/eu4-modding-reference.md).
 				guiButtonType = {
 					name = "atools_bg"
 					quadTextureSprite = "gfx_transp_black_50"
 					position = { x = 0 y = 0 }
-					size = { x = 250 y = 490 }
+					size = { x = 520 y = 290 }
 					Orientation = "UPPER_LEFT"
 				}
 
 				instantTextBoxType = {
 					name = "atools_title"
-					position = { x = 14 y = 12 }
+					position = { x = 16 y = 12 }
 					font = "vic_18"
 					text = "AUTOMATION_TOOLS_TITLE"
-					maxWidth = 200
+					maxWidth = 300
 					maxHeight = 24
 				}
-
 				guiButtonType = {
 					name = "atools_close"
 					scripted = yes
-					position = { x = 218 y = 8 }
+					position = { x = 488 y = 8 }
 					quadTextureSprite = "GFX_button_close"
 					Orientation = "UPPER_LEFT"
 				}
 
-				# ---- Tool: auto-cede from the #1 nation ----
+				# --- 2 x 2 tool grid: each cell is toggle + interval button + status ---
 				guiButtonType = {
 					name = "atools_toggle_cede"
 					scripted = yes
-					position = { x = 16 y = 50 }
+					position = { x = 16 y = 52 }
 					quadTextureSprite = "GFX_checkbox"
 					Orientation = "UPPER_LEFT"
 				}
 				instantTextBoxType = {
 					name = "atools_toggle_cede_label"
-					position = { x = 46 y = 53 }
+					position = { x = 46 y = 55 }
 					font = "vic_18"
 					text = "ATOOLS_CEDE_LABEL"
 					maxWidth = 200
 					maxHeight = 24
 				}
-
 				guiButtonType = {
 					name = "atools_interval_cycle"
 					scripted = yes
-					position = { x = 16 y = 90 }
+					position = { x = 16 y = 84 }
 					quadTextureSprite = "button_type_8"
 					buttonText = "ATOOLS_INTERVAL_CYCLE"
 					buttonFont = "vic_18"
 					Orientation = "UPPER_LEFT"
 				}
-
 				instantTextBoxType = {
 					name = "atools_cede_status"
 					scripted = yes
-					position = { x = 16 y = 132 }
+					position = { x = 16 y = 126 }
 					font = "vic_18"
 					maxWidth = 224
-					maxHeight = 60
+					maxHeight = 40
 				}
 
-				# ---- Tool: auto-convert religion & culture ----
 				guiButtonType = {
 					name = "atools_toggle_convert"
 					scripted = yes
-					position = { x = 16 y = 172 }
+					position = { x = 272 y = 52 }
 					quadTextureSprite = "GFX_checkbox"
 					Orientation = "UPPER_LEFT"
 				}
 				instantTextBoxType = {
 					name = "atools_toggle_convert_label"
-					position = { x = 46 y = 175 }
+					position = { x = 302 y = 55 }
 					font = "vic_18"
 					text = "ATOOLS_CONVERT_LABEL"
 					maxWidth = 200
-					maxHeight = 40
+					maxHeight = 24
 				}
 				guiButtonType = {
 					name = "atools_convert_interval_cycle"
 					scripted = yes
-					position = { x = 16 y = 204 }
+					position = { x = 272 y = 84 }
 					quadTextureSprite = "button_type_8"
 					buttonText = "ATOOLS_CONVERT_INTERVAL_CYCLE"
 					buttonFont = "vic_18"
@@ -685,23 +679,22 @@ guiTypes = {
 				instantTextBoxType = {
 					name = "atools_convert_status"
 					scripted = yes
-					position = { x = 16 y = 246 }
+					position = { x = 272 y = 126 }
 					font = "vic_18"
 					maxWidth = 224
-					maxHeight = 24
+					maxHeight = 40
 				}
 
-				# ---- Tool: auto-grow the weakest nation ----
 				guiButtonType = {
 					name = "atools_toggle_grow"
 					scripted = yes
-					position = { x = 16 y = 276 }
+					position = { x = 16 y = 162 }
 					quadTextureSprite = "GFX_checkbox"
 					Orientation = "UPPER_LEFT"
 				}
 				instantTextBoxType = {
 					name = "atools_toggle_grow_label"
-					position = { x = 46 y = 279 }
+					position = { x = 46 y = 165 }
 					font = "vic_18"
 					text = "ATOOLS_GROW_LABEL"
 					maxWidth = 200
@@ -710,7 +703,7 @@ guiTypes = {
 				guiButtonType = {
 					name = "atools_grow_interval_cycle"
 					scripted = yes
-					position = { x = 16 y = 308 }
+					position = { x = 16 y = 194 }
 					quadTextureSprite = "button_type_8"
 					buttonText = "ATOOLS_GROW_INTERVAL_CYCLE"
 					buttonFont = "vic_18"
@@ -719,23 +712,22 @@ guiTypes = {
 				instantTextBoxType = {
 					name = "atools_grow_status"
 					scripted = yes
-					position = { x = 16 y = 350 }
+					position = { x = 16 y = 236 }
 					font = "vic_18"
 					maxWidth = 224
 					maxHeight = 40
 				}
 
-				# ---- Tool: absorb exclaves ----
 				guiButtonType = {
 					name = "atools_toggle_absorb"
 					scripted = yes
-					position = { x = 16 y = 380 }
+					position = { x = 272 y = 162 }
 					quadTextureSprite = "GFX_checkbox"
 					Orientation = "UPPER_LEFT"
 				}
 				instantTextBoxType = {
 					name = "atools_toggle_absorb_label"
-					position = { x = 46 y = 383 }
+					position = { x = 302 y = 165 }
 					font = "vic_18"
 					text = "ATOOLS_ABSORB_LABEL"
 					maxWidth = 200
@@ -744,7 +736,7 @@ guiTypes = {
 				guiButtonType = {
 					name = "atools_absorb_interval_cycle"
 					scripted = yes
-					position = { x = 16 y = 412 }
+					position = { x = 272 y = 194 }
 					quadTextureSprite = "button_type_8"
 					buttonText = "ATOOLS_ABSORB_INTERVAL_CYCLE"
 					buttonFont = "vic_18"
@@ -753,10 +745,10 @@ guiTypes = {
 				instantTextBoxType = {
 					name = "atools_absorb_status"
 					scripted = yes
-					position = { x = 16 y = 454 }
+					position = { x = 272 y = 236 }
 					font = "vic_18"
 					maxWidth = 224
-					maxHeight = 24
+					maxHeight = 40
 				}
 			}
 

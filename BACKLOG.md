@@ -28,9 +28,6 @@ Running list of planned work and ideas, so we don't lose them. Newest context at
 ## Planned
 - [ ] **Tune interval cadence** — defaults (shrink 12mo, convert 60mo) are first-pass
   values; adjust to taste once the crash is resolved and we've watched more games.
-- [ ] **Polish the panel's visual design** — layout, styling, icons. Pure UI now
-  (contract-isolated), so it won't touch backend logic. The panel is 3 tool-rows tall and
-  the breakaway toggle was deferred from it, so this is overdue.
 - [ ] **Strip the diagnostic traces** (`ATOOLS shrink A..K`) and the `atools_last_top`
   flag once the crash is understood — they exist only for this investigation.
 
@@ -45,6 +42,12 @@ Running list of planned work and ideas, so we don't lose them. Newest context at
   block + UI toggle, per the add-a-tool recipe in docs/automationtools.md).
 
 ## Done
+- [x] **Panel layout rebuilt** — was a 250x490 vertical strip of four stacked tools;
+  now a 520x290 2x2 grid, re-centred with the calibrated offset (position = -halfSize +
+  (1011,-281)). Each cell is toggle + "Change interval" button + status line. Labels and
+  status text shortened to fit a 250px cell, and all four status lines share one format.
+  Pure UI change - the contract and backend were untouched, which is what the UI/backend
+  split was for.
 - [x] **Absorb exclaves** — own toggle + interval (default 12mo, cycles 1/6/12/24). Any
   province that is FULLY SURROUNDED (no adjacent province owned by its own owner) is
   handed to its weakest adjacent nation, cleaning up the specks the shrink/grow churn
