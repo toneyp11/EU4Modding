@@ -253,6 +253,13 @@ atools_cede_effect = {
 	if = { limit = { NOT = { has_global_flag = atools_shrink_done } } atools_shrink_attempt_effect = yes }
 	if = { limit = { NOT = { has_global_flag = atools_shrink_done } } atools_shrink_attempt_effect = yes }
 
+	# Count a run that accomplished nothing after every attempt, so the panel can show
+	# how often the tool fired but could not act, rather than leaving that invisible.
+	if = {
+		limit = { NOT = { has_global_flag = atools_shrink_done } }
+		1 = { change_variable = { which = atools_cede_fail_count value = 1 } }
+	}
+
 	# Post-clean so nothing survives this run.
 	every_country = { limit = { has_country_flag = atools_preexisting_sub } clr_country_flag = atools_preexisting_sub }
 	every_country = { limit = { has_country_flag = atools_skip_top } clr_country_flag = atools_skip_top }
@@ -467,6 +474,10 @@ atools_grow_effect = {
 	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
 	if = { limit = { NOT = { has_global_flag = atools_grow_done } } atools_grow_attempt_effect = yes }
 
+	if = {
+		limit = { NOT = { has_global_flag = atools_grow_done } }
+		1 = { change_variable = { which = atools_grow_fail_count value = 1 } }
+	}
 	every_country = { limit = { has_country_flag = atools_skip_weak } clr_country_flag = atools_skip_weak }
 }
 

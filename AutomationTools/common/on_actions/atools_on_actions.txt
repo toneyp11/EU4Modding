@@ -16,9 +16,11 @@
 # HUB VARIABLES (on province 1; UI displays via [1.<var>.GetValue])
 #   atools_cede_interval    UI writes / backend reads : months between shrink runs (>=1)
 #   atools_cede_count       backend writes / UI reads : total shrinks this game
+#   atools_cede_fail_count  backend writes / UI reads : shrink runs that did nothing
 #   atools_convert_interval UI writes / backend reads : months between convert runs (>=1)
 #   atools_grow_interval    UI writes / backend reads : months between grow runs (>=1)
 #   atools_grow_count       backend writes / UI reads : total grows this game
+#   atools_grow_fail_count  backend writes / UI reads : grow runs that did nothing
 #   atools_absorb_interval  UI writes / backend reads : months between absorb runs (>=1)
 #   atools_absorb_count     backend writes / UI reads : total exclaves absorbed this game
 #
@@ -92,6 +94,8 @@ on_startup = {
 			set_variable = { which = atools_grow_count value = 0 }
 			set_variable = { which = atools_absorb_months value = 0 }
 			set_variable = { which = atools_absorb_count value = 0 }
+			set_variable = { which = atools_cede_fail_count value = 0 }
+			set_variable = { which = atools_grow_fail_count value = 0 }
 		}
 	}
 }

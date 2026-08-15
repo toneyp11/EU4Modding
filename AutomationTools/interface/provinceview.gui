@@ -671,7 +671,7 @@ guiTypes = {
 					font = "vic_18"
 					text = "ATOOLS_CONVERT_LABEL"
 					maxWidth = 200
-					maxHeight = 24
+					maxHeight = 40
 				}
 				guiButtonType = {
 					name = "atools_convert_interval_cycle"
@@ -722,7 +722,7 @@ guiTypes = {
 					position = { x = 16 y = 350 }
 					font = "vic_18"
 					maxWidth = 224
-					maxHeight = 24
+					maxHeight = 40
 				}
 
 				# ---- Tool: absorb exclaves ----
