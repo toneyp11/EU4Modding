@@ -66,11 +66,11 @@ several things per run.
 - **Known fragility (see backlog to harden):** province 1 is hard-coded as the state
   "hub" (all global vars + the atools.1 timer) — robust for map-expansion mods (province
   ID 1 exists in every map) but would break under a total conversion.
-- **The UI is OPTIONAL.** Every tool is toggled by a global flag, and EU4's console can
-  set those (`set_flag` / `clr_flag`); intervals have console request flags too. So
-  deleting `interface/` leaves the mod fully functional with ZERO .gui conflicts against
-  any mod — the best answer to "make it work with other mods", since scripted GUI can only
-  live in vanilla .gui files that replace wholesale. See [docs/console-control.md](docs/console-control.md).
+- **No console shortcut for the panel.** Mods cannot add console commands (the list is
+  hardcoded), and scripted GUI only renders inside its host window - so there is no way to
+  pop the panel open from the console. The panel is reached from the province view.
+  (Global flags like `atools_cede_enabled` *can* be flipped with `set_flag`/`clr_flag` if
+  ever needed for debugging - that works for free, no code.)
 - **`check-mod.sh` enforces this** (Compatibility section: no non-hub hard-coded province
   ids, all loc keys prefixed, `provinceview.gui` purely additive). Full guide +
   load-order guidance: [docs/compatibility.md](docs/compatibility.md).

@@ -17,13 +17,6 @@ two unavoidable touchpoints, and how it's enforced.
 - Rule/gameplay mods that only touch `common/**`, `events/**`, `on_actions/**` → these
   MERGE with ours; no conflict as long as names differ (ours are all `atools_`-prefixed).
 
-## The escape hatch: run with no UI at all
-The panel is the only real conflict surface. Because every tool is driven by global flags
-that the console can set, **deleting the mod's `interface/` folder removes all .gui
-conflicts while keeping the mod fully usable** — see [console-control.md](console-control.md).
-Measured on this machine, `provinceview.gui` is overridden by **9** installed mods, so for
-a heavily modded playset this is the recommended way to run it.
-
 ## Touchpoint 1 — `interface/provinceview.gui` REPLACES (not merges)
 EU4 `.gui` files don't merge: if two mods ship `provinceview.gui`, only the **last one
 loaded** is used. Our copy is **vanilla 1.37.5 verbatim + purely additive injections**
