@@ -232,3 +232,36 @@ custom_text_box = {
 	potential = { always = yes }
 	tooltip = ATOOLS_ABSORB_STATUS_TT
 }
+
+# Counter read-outs. EU4's loc parser only tolerates ONE [x.y.GetValue] per
+# string, so every value gets its own text box (see docs/eu4-modding-reference.md).
+custom_text_box = {
+	name = atools_cede_done
+	potential = { always = yes }
+	tooltip = ATOOLS_CEDE_STATUS_TT
+}
+
+custom_text_box = {
+	name = atools_cede_failed
+	potential = { always = yes }
+	tooltip = ATOOLS_CEDE_STATUS_TT
+}
+
+custom_text_box = {
+	name = atools_grow_done
+	potential = { always = yes }
+	tooltip = ATOOLS_GROW_STATUS_TT
+}
+
+custom_text_box = {
+	name = atools_grow_failed
+	potential = { always = yes }
+	tooltip = ATOOLS_GROW_STATUS_TT
+}
+
+custom_text_box = {
+	name = atools_absorb_done
+	potential = { always = yes }
+	tooltip = ATOOLS_ABSORB_STATUS_TT
+}
+

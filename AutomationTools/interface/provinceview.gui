@@ -648,8 +648,24 @@ guiTypes = {
 					scripted = yes
 					position = { x = 16 y = 126 }
 					font = "vic_18"
-					maxWidth = 224
-					maxHeight = 40
+					maxWidth = 88
+					maxHeight = 24
+				}
+				instantTextBoxType = {
+					name = "atools_cede_done"
+					scripted = yes
+					position = { x = 108 y = 126 }
+					font = "vic_18"
+					maxWidth = 70
+					maxHeight = 24
+				}
+				instantTextBoxType = {
+					name = "atools_cede_failed"
+					scripted = yes
+					position = { x = 180 y = 126 }
+					font = "vic_18"
+					maxWidth = 68
+					maxHeight = 24
 				}
 
 				guiButtonType = {
@@ -681,8 +697,8 @@ guiTypes = {
 					scripted = yes
 					position = { x = 272 y = 126 }
 					font = "vic_18"
-					maxWidth = 224
-					maxHeight = 40
+					maxWidth = 88
+					maxHeight = 24
 				}
 
 				guiButtonType = {
@@ -714,8 +730,24 @@ guiTypes = {
 					scripted = yes
 					position = { x = 16 y = 236 }
 					font = "vic_18"
-					maxWidth = 224
-					maxHeight = 40
+					maxWidth = 88
+					maxHeight = 24
+				}
+				instantTextBoxType = {
+					name = "atools_grow_done"
+					scripted = yes
+					position = { x = 108 y = 236 }
+					font = "vic_18"
+					maxWidth = 70
+					maxHeight = 24
+				}
+				instantTextBoxType = {
+					name = "atools_grow_failed"
+					scripted = yes
+					position = { x = 180 y = 236 }
+					font = "vic_18"
+					maxWidth = 68
+					maxHeight = 24
 				}
 
 				guiButtonType = {
@@ -747,8 +779,16 @@ guiTypes = {
 					scripted = yes
 					position = { x = 272 y = 236 }
 					font = "vic_18"
-					maxWidth = 224
-					maxHeight = 40
+					maxWidth = 88
+					maxHeight = 24
+				}
+				instantTextBoxType = {
+					name = "atools_absorb_done"
+					scripted = yes
+					position = { x = 364 y = 236 }
+					font = "vic_18"
+					maxWidth = 90
+					maxHeight = 24
 				}
 			}
 

@@ -47,6 +47,15 @@ while IFS= read -r f; do
   [ "$bad" = 0 ] && printf "  OK    %s\n" "${f#"$MOD"/}"
 done < <(find "$MOD" -type f -name "*.yml" | sort)
 
+section "Localisation: one scope command per string"
+# EU4's loc parser mis-terminates the first bracket when a second follows: a string with
+# two [x.y.GetValue] entries logs "Unknown text property 'GetValue]"' and renders nothing.
+# Measured in a real run: 9,261 errors from three status lines. Vanilla uses this form
+# exactly once in the whole game. One value per string; split extras into separate boxes.
+multi=$(grep -nE '^[[:space:]]+[A-Za-z0-9_.]+:[0-9]' "$MOD"/localisation/*.yml 2>/dev/null         | awk -F: '{ n=gsub(/\.GetValue\]/,""); if (n>1) print "          " $0 }')
+if [ -z "$multi" ]; then echo "  OK    no loc string has more than one .GetValue]"
+else echo "  FAIL  loc string(s) with 2+ .GetValue] (parser breaks, renders nothing):"; echo "$multi"; fail=1; fi
+
 section "GUI scripted=yes  <->  custom_gui bindings"
 gui=$(grep -rB1 "scripted = yes" "$MOD/interface" 2>/dev/null | grep -oE "atools_[a-z_]+" | sort -u)
 cg=$(grep -roE "name = atools_[a-z_]+" "$MOD/common/custom_gui" 2>/dev/null | grep -oE "atools_[a-z_]+" | sort -u)
