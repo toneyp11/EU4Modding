@@ -95,6 +95,15 @@ a contiguous multi-region empire as detached. (Verified: `region = event_target:
 and `area = <name>` ARE valid triggers; the flaw was the region *criterion*, not syntax.)
 Not yet re-confirmed in-game whether same-continent land exclaves count as overseas — TBD.
 
+### Development: raw vs autonomy-adjusted
+A province's development is simply `base_tax + base_production + base_manpower`; there is
+**no `add_development` effect**, so add 1 to one of the three (`add_base_tax = 1` etc,
+536/514/421 vanilla uses). Verified against a save: a country's stored `raw_development`
+equals the sum of its provinces' three base values **exactly**, while `development` is the
+autonomy-adjusted figure and sits slightly lower (Sweden: raw 124.000 vs 123.802; a
+zero-autonomy nation shows both identical). So `add_base_tax = 1` is a clean +1 to raw
+development, and a hair under +1 to the effective number.
+
 ### Borders / neighbours
 - Country-level: `is_neighbor_of = event_target:X` (true across land **or straits**).
   Accepts scopes/event targets. **Use this** — the manual
