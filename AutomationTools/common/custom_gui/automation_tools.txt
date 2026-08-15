@@ -152,7 +152,8 @@ custom_button = {
 	tooltip = ATOOLS_GROW_TT
 }
 
-# Interval selector -> contract var atools_grow_interval. Cycles 6 -> 12 -> 24 -> 60.
+# Interval selector -> contract var atools_grow_interval. Cycles 1 -> 6 -> 12 -> 24,
+# matching the shrink so both ends of the convergence can run at the same cadence.
 custom_button = {
 	name = atools_grow_interval_cycle
 	potential = { always = yes }
@@ -160,6 +161,10 @@ custom_button = {
 	effect = {
 		1 = {
 			if = {
+				limit = { check_variable = { which = atools_grow_interval value = 1 } NOT = { check_variable = { which = atools_grow_interval value = 6 } } }
+				set_variable = { which = atools_grow_interval value = 6 }
+			}
+			else_if = {
 				limit = { check_variable = { which = atools_grow_interval value = 6 } NOT = { check_variable = { which = atools_grow_interval value = 12 } } }
 				set_variable = { which = atools_grow_interval value = 12 }
 			}
@@ -167,11 +172,7 @@ custom_button = {
 				limit = { check_variable = { which = atools_grow_interval value = 12 } NOT = { check_variable = { which = atools_grow_interval value = 24 } } }
 				set_variable = { which = atools_grow_interval value = 24 }
 			}
-			else_if = {
-				limit = { check_variable = { which = atools_grow_interval value = 24 } NOT = { check_variable = { which = atools_grow_interval value = 60 } } }
-				set_variable = { which = atools_grow_interval value = 60 }
-			}
-			else = { set_variable = { which = atools_grow_interval value = 6 } }
+			else = { set_variable = { which = atools_grow_interval value = 1 } }
 		}
 	}
 	tooltip = ATOOLS_GROW_INTERVAL_CYCLE_TT
