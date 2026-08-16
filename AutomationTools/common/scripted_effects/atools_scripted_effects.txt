@@ -118,6 +118,27 @@ atools_shrink_cede_effect = {
 		}
 	}
 	log = "ATOOLS shrink G: min-done"
+	# DIAGNOSTIC: is the chosen receiver actually the SMALLEST eligible neighbour?
+	# Re-ask the question with the exact same eligibility test plus "strictly smaller
+	# than the one we picked". If anything matches, the running minimum did not work and
+	# this logs - which would mean the receiver is effectively the last neighbour
+	# iterated rather than the weakest. Silence means the selection is correct and the
+	# observed behaviour has another cause.
+	if = {
+		limit = {
+			has_global_flag = atools_have_receiver
+			any_neighbor_country = {
+				is_colonial_nation = no
+				OR = {
+					NOT = { has_country_flag = atools_just_shrank }
+					had_country_flag = { flag = atools_just_shrank days = 3650 }
+				}
+				any_owned_province = { any_neighbor_province = { is_city = yes is_capital = no owned_by = event_target:atools_top_nation } }
+				NOT = { total_development = event_target:atools_receiver }
+			}
+		}
+		log = "ATOOLS shrink X: RECEIVER-NOT-MINIMAL (a smaller eligible neighbour existed)"
+	}
 
 	if = {
 		limit = { NOT = { has_global_flag = atools_have_receiver } }
