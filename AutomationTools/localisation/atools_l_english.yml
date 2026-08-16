@@ -20,7 +20,7 @@
  ATOOLS_GROW_INTERVAL_CYCLE_TT:0 "Click to cycle the grow interval between §Y1§!, §Y6§!, §Y12§! and §Y24§! months. This interval is §Yseparate§! from the other tools."
  ATOOLS_GROW_STATUS_TT:0 "Interval, how many grows succeeded, and how many runs fired but could do nothing. With the +1 development fallback this should stay at zero."
  ATOOLS_ABSORB_LABEL:0 "Absorb exclaves"
- ATOOLS_ABSORB_TT:0 "When §Yon§!, every §Yabsorb interval§! any province that is §Yfully surrounded§! - with no neighbouring province belonging to its own owner - is handed to its §Yweakest adjacent nation§!. Cleans up the scattered specks the shrink and grow leave behind. Overseas colonies are §Ynot§! affected, and a nation is never absorbed out of existence."
+ ATOOLS_ABSORB_TT:0 "When §Yon§!, every §Yabsorb interval§! any province that is §Yfully surrounded§! - with no neighbouring province belonging to its own owner - is handed to its §Yweakest adjacent nation§!. Cleans up the scattered specks the shrink and grow leave behind. §YColonies are protected§!: only provinces on the owner's own continent are absorbed, and never an active colony, so a new overseas foothold is never taken. A nation is also never absorbed out of existence."
  ATOOLS_ABSORB_INTERVAL_CYCLE:0 "Change interval"
  ATOOLS_ABSORB_INTERVAL_CYCLE_TT:0 "Click to cycle the absorb interval between §Y1§!, §Y6§!, §Y12§! and §Y24§! months. This interval is §Yseparate§! from the other tools."
  ATOOLS_ABSORB_STATUS_TT:0 "How often the absorb pass runs, and how many exclaves have been absorbed this game."

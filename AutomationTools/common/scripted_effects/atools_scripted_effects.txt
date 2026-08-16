@@ -575,10 +575,22 @@ atools_absorb_effect = {
 		# be absorbed out of existence in a single pass.
 		limit = { num_of_cities = 2 }
 		save_event_target_as = atools_absorb_owner
+		capital_scope = { save_event_target_as = atools_absorb_capital }
 		random_owned_province = {
 			limit = {
 				is_city = yes
 				is_capital = no                                    # never absorb a seat of government
+				# COLONIAL PROTECTION. A nation's FIRST province in a new land has no adjacent
+				# province of its own, so it reads as "fully surrounded" - and if any rival
+				# colony borders it, this pass would hand the new foothold straight to them and
+				# make colonising contested coastline impossible. Two guards:
+				#  - only absorb on the owner's OWN continent, so overseas holdings are exempt;
+				#  - never absorb a province that is still an active colony.
+				# Exclaves in the New World are therefore left alone, which is the right trade:
+				# the speckling this tool exists to clean up is overwhelmingly on the home
+				# continent, where the shrink and grow do their ceding.
+				same_continent = event_target:atools_absorb_capital
+				is_colony = no
 				# fully surrounded: nothing adjacent belongs to our own owner...
 				NOT = { any_neighbor_province = { owned_by = event_target:atools_absorb_owner } }
 				# ...and somebody adjacent can actually take it.
