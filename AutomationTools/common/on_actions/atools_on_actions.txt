@@ -74,6 +74,13 @@ on_startup = {
 	# province. On a total-conversion map that province may be uncolonised, wasteland or
 	# sea - nobody owns it, the gate never passes and the whole mod silently does nothing.
 	# In that case nominate a 'ticker' country instead so the tick still runs.
+	# Clear any previous nomination FIRST. on_startup runs on every load and province
+	# ownership is evidently not resolved yet at that point, so the check below passed
+	# on each load and stamped a fresh country - a real save accumulated SEVEN tickers.
+	# Harmless while the hub is owned (the tick gate also requires that nobody owns it),
+	# but had the hub ever gone unowned, all seven would have ticked the tools in the
+	# same month. Clearing first guarantees at most one.
+	every_country = { limit = { has_country_flag = atools_ticker } clr_country_flag = atools_ticker }
 	if = {
 		limit = { NOT = { any_country = { owns = 1 } } }
 		random_country = {
